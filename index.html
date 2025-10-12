@@ -4,6 +4,7 @@
   <link rel=\"icon\" href=\"data:,\">
   <link rel=\"icon\" href=\"data:,\">
   <link rel=\"icon\" href=\"data:,\">
+  <link rel=\"icon\" href=\"data:,\">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drift with Myth 2</title>
@@ -1387,7 +1388,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   }
 
   // Load top 5 global leaderboard (highest scores)
-  async function window.firebaseIntegration.loadLeaderboard(){
+  async function loadLeaderboard(){
     try{
       const q = await db.collection("leaderboard")
         .orderBy("score", "desc")
@@ -1406,7 +1407,10 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   async function updateLeaderboardDisplay(){
     const listEl = document.getElementById("globalRankList");
     if(!listEl) return;
-    const rows = if(window.firebaseIntegration && window.firebaseIntegration.loadLeaderboard){ const scores = await window.firebaseIntegration.loadLeaderboard();
+    let rows = [];
+  if (window.firebaseIntegration && window.firebaseIntegration.loadLeaderboard) {
+    rows = await window.firebaseIntegration.loadLeaderboard();
+  }
     listEl.innerHTML = "";
     rows.forEach((r, i) => {
       const li = document.createElement("li");
