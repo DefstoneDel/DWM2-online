@@ -748,7 +748,7 @@
             const localBest = loadLocalBest();
             const playerName = loadPlayerName(); 
             
-            const filteredScores = await loadLeaderboard().filter(item => item.name !== "YOU");
+            const filteredScores = await window.firebaseIntegration.loadLeaderboard().filter(item => item.name !== "YOU");
             const allScores = [...filteredScores];
 
             allScores.push({ name: playerName, score: localBest });
@@ -1371,7 +1371,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   }
 
   // Load top 5 global leaderboard (highest scores)
-  async function loadLeaderboard(){
+  async function window.firebaseIntegration.loadLeaderboard(){
     try{
       const q = await db.collection("leaderboard")
         .orderBy("score", "desc")
@@ -1390,7 +1390,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   async function updateLeaderboardDisplay(){
     const listEl = document.getElementById("globalRankList");
     if(!listEl) return;
-    const rows = await loadLeaderboard();
+    const rows = await window.firebaseIntegration.loadLeaderboard();
     listEl.innerHTML = "";
     rows.forEach((r, i) => {
       const li = document.createElement("li");
