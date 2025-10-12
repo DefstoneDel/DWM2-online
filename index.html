@@ -1301,10 +1301,18 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   }
 
   auth.onAuthStateChanged(user => {
-    if(user) currentUser = user;
-    else {
-     
-  });
+  if (user) {
+    currentUser = user;
+    console.log("Signed in as:", currentUser.uid);
+  } else {
+    // If no user is signed in (first time or cleared cache), sign in anonymously
+    auth.signInAnonymously()
+      .then(() => {
+        console.log("Signed in anonymously.");
+      })
+      .catch(e => console.warn("Anonymous sign-in failed:", e));
+  }
+});
 
 
 
