@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel=\"icon\" href=\"data:,\">
-  <link rel=\"icon\" href=\"data:,\">
-  <link rel=\"icon\" href=\"data:,\">
-  <link rel=\"icon\" href=\"data:,\">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drift with Myth 2</title>
@@ -740,58 +736,39 @@
             return name ? name.toUpperCase() : 'PLAYER';
         }
 
-       function savePlayerName(name) {
-  if (name) {
-    localStorage.setItem(
-      PLAYER_NAME_KEY,
-      name.toUpperCase().trim().slice(0, 8)
-    );
-  }
-}
+        function savePlayerName(name) {
+            if (name) {
+                localStorage.setItem(PLAYER_NAME_KEY, name.toUpperCase().trim().slice(0, 8));
+            }
+        }
 
+        function displayWorldRanking() {
+            const localBest = loadLocalBest();
+            const playerName = loadPlayerName(); 
+            
+            const filteredScores = MOCK_WORLD_SCORES.filter(item => item.name !== "YOU");
+            const allScores = [...filteredScores];
 
-        async function displayWorldRanking() {
-  const localBest = loadLocalBest();
-  const playerName = loadPlayerName();
+            allScores.push({ name: playerName, score: localBest });
 
-  let filteredScores = [];
+            allScores.sort((a, b) => b.score - a.score);
 
-  // ✅ Load scores from Firebase safely
-  if (window.firebaseIntegration && window.firebaseIntegration.loadLeaderboard) {
-    try {
-      const scores = await window.firebaseIntegration.loadLeaderboard();
-      filteredScores = scores.filter(item => item.name !== "YOU");
-    } catch (err) {
-      console.warn("Error loading leaderboard:", err);
-      filteredScores = [];
-    }
-  }
-
-  const allScores = [...filteredScores];
-  allScores.push({ name: playerName, score: localBest });
-
-  // ✅ Sort highest score first
-  allScores.sort((a, b) => b.score - a.score);
-
-  // ✅ Update display
-  globalRankList.innerHTML = "";
-  const scoresToShow = allScores.slice(0, 5);
-
-  scoresToShow.forEach((item, index) => {
-    const isPlayer = item.name === playerName && item.score === localBest;
-    const li = document.createElement("li");
-    li.className = isPlayer ? "rank-highlight" : "";
-    li.innerHTML = `
-      <span class="rank-rank">#${index + 1}</span> 
-      <span>${item.name}</span>
-      <span class="rank-score">${formatScore(item.score)}</span>
-    `;
-    globalRankList.appendChild(li);
-  });
-
-  localBestScoreDisplay.textContent = formatScore(localBest);
-}
-
+            globalRankList.innerHTML = '';
+            
+            const scoresToShow = allScores.slice(0, 5);
+            
+            scoresToShow.forEach((item, index) => {
+                const isPlayer = item.name === playerName && item.score === localBest;
+                const li = document.createElement('li');
+                li.className = isPlayer ? 'rank-highlight' : '';
+                li.innerHTML = `<span class="rank-rank">#${index + 1}</span> 
+                                     <span>${item.name}</span>
+                                     <span class="rank-score">${formatScore(item.score)}</span>`;
+                globalRankList.appendChild(li);
+            });
+            
+            localBestScoreDisplay.textContent = formatScore(localBest);
+        }
 
         // --- Customization Logic ---
         function loadCustomization() {
@@ -997,38 +974,28 @@
         }
         
         // --- Remaining Game Logic ---
-function spawnObstacle() {
-  // All parameters determining the obstacle use seededRandom() or fixed constants.
-  const obstacleWidth = 30 + seededRandom() * 20;
-  const laneCount = Math.floor(canvas.width / (obstacleWidth + 10));
-  const laneIndex = Math.floor(seededRandom() * laneCount);
-  const x = laneIndex * (obstacleWidth + 10) + 5 + (obstacleWidth / 2 - 20);
+        
+        function spawnObstacle() {
+            // All parameters determining the obstacle use seededRandom() or fixed constants.
+            const obstacleWidth = 30 + seededRandom() * 20;
+            const laneCount = Math.floor(canvas.width / (obstacleWidth + 10)); 
+            const laneIndex = Math.floor(seededRandom() * laneCount);
+            const x = laneIndex * (obstacleWidth + 10) + 5 + (obstacleWidth / 2 - 20); 
+            
+            const MIN_Y_GAP = 150;
+            const collisionExists = obstacles.some(obs => obs.y < MIN_Y_GAP && obs.y > 0 && Math.abs(obs.x - x) < obstacleWidth * 1.5);
 
-  const MIN_Y_GAP = 150;
-  const collisionExists = obstacles.some(
-    (obs) =>
-      obs.y < MIN_Y_GAP &&
-      obs.y > 0 &&
-      Math.abs(obs.x - x) < obstacleWidth * 1.5
-  );
+            if (collisionExists) return; 
 
-  if (collisionExists) return;
-
-  obstacles.push({
-    x: x,
-    y: -60,
-    width: obstacleWidth,
-    height: 50,
-    color:
-      OBSTACLE_COLORS[
-        Math.floor(seededRandom() * OBSTACLE_COLORS.length)
-      ],
-    speed:
-      obstacleSpeed *
-      (1 - SPEED_VARIANCE / 2 + seededRandom() * SPEED_VARIANCE),
-  });
-}
-
+            obstacles.push({
+                x: x,
+                y: -60, 
+                width: obstacleWidth,
+                height: 50,
+                color: OBSTACLE_COLORS[Math.floor(seededRandom() * OBSTACLE_COLORS.length)],
+                speed: obstacleSpeed * (1 - SPEED_VARIANCE / 2 + seededRandom() * SPEED_VARIANCE) 
+            });
+        }
         
         function updateObstacles() {
             for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -1124,9 +1091,9 @@ function spawnObstacle() {
             if (!ctx) return;
 
             drawRoad(ctx, obstacleSpeed * 0.9);
-            lampPosts.forEach(post => drawLampPost(ctx, post);
+            lampPosts.forEach(post => drawLampPost(ctx, post));
 
-            obstacles.forEach(obs => drawOpponentVehicle(ctx, obs);
+            obstacles.forEach(obs => drawOpponentVehicle(ctx, obs));
 
             drawSmokeParticles(ctx);
 
@@ -1321,20 +1288,19 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   })
   .catch(e => console.warn("Failed to set persistence or sign in:", e));
 
-
   // Small helper to wait for auth to be ready (max timeout)
- function waitForAuth(timeout = 5000) {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    (function check() {
-      if (currentUser) return resolve(currentUser);
-      if (Date.now() - start > timeout) return resolve(null);
-      setTimeout(check, 150);
-    })();
-  });
-}
+  function waitForAuth(timeout=5000){
+    return new Promise(resolve=>{
+      const start = Date.now();
+      (function check(){
+        if(currentUser) return resolve(currentUser);
+        if(Date.now() - start > timeout) return resolve(null);
+        setTimeout(check, 150);
+      })();
+    });
+  }
 
-auth.onAuthStateChanged((user) => {
+  auth.onAuthStateChanged(user => {
   if (user) {
     currentUser = user;
     console.log("Signed in as:", currentUser.uid);
@@ -1344,10 +1310,9 @@ auth.onAuthStateChanged((user) => {
       .then(() => {
         console.log("Signed in anonymously.");
       })
-      .catch((e) => console.warn("Anonymous sign-in failed:", e));
+      .catch(e => console.warn("Anonymous sign-in failed:", e));
   }
 });
-
 
 
 
@@ -1411,7 +1376,7 @@ auth.onAuthStateChanged((user) => {
         .limit(5)
         .get();
       const out = [];
-      q.forEach(d => out.push(d.data());
+      q.forEach(d => out.push(d.data()));
       return out;
     } catch(e){
       console.error("loadLeaderboard error:", e);
@@ -1423,10 +1388,7 @@ auth.onAuthStateChanged((user) => {
   async function updateLeaderboardDisplay(){
     const listEl = document.getElementById("globalRankList");
     if(!listEl) return;
-    let rows = [];
-  if (window.firebaseIntegration && window.firebaseIntegration.loadLeaderboard) {
-    rows = await window.firebaseIntegration.loadLeaderboard();
-  }
+    const rows = await loadLeaderboard();
     listEl.innerHTML = "";
     rows.forEach((r, i) => {
       const li = document.createElement("li");
@@ -1435,29 +1397,11 @@ auth.onAuthStateChanged((user) => {
       li.innerHTML = `<span>#${i+1}</span><span>${name}</span><span class="rank-score">${score}s</span>`;
       listEl.appendChild(li);
     });
-   // ✅ Update display with user's Firebase high score instead of local best
-const localBestEl = document.getElementById("localBestScore");
-if (localBestEl) {
-  try {
-    const user = await waitForAuth();
-    if (user) {
-      const ref = db.collection("leaderboard").doc(user.uid);
-      const snap = await ref.get();
-      if (snap.exists) {
-        const data = snap.data();
-        localBestEl.textContent = `${data.score || 0}s`;
-      } else {
-        localBestEl.textContent = "0s";
-      }
-    } else {
-      localBestEl.textContent = "0s";
-    }
-  } catch (err) {
-    console.warn("Error loading user highscore:", err);
-    localBestEl.textContent = "0s";
+    // update local best display if present
+    const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+    const localBestEl = document.getElementById("localBestScore");
+    if(localBestEl) localBestEl.textContent = `${localBest}s`;
   }
-}
-
 
   // Wrap the game's gameOver function to save + update leaderboard
   const originalGameOver = window.gameOver || function(){};
@@ -1471,32 +1415,30 @@ if (localBestEl) {
 
   // Hook name input blur to save name to Firestore and refresh board
   window.addEventListener("load", () => {
-  // initial leaderboard refresh
-  updateLeaderboardDisplay().catch(()=>{});
+    // initial leaderboard refresh
+    updateLeaderboardDisplay().catch(()=>{});
 
-  const nameInput = document.getElementById("playerNameInput");
-  if(nameInput){
-    nameInput.addEventListener("blur", async (e) => {
-      const nm = (e.target.value||"PLAYER").toUpperCase().slice(0,8);
-      localStorage.setItem(PLAYER_NAME_KEY, nm);
-      try{ await saveNameToFirebase(nm); } catch(err){ console.warn(err); }
-      updateLeaderboardDisplay().catch(()=>{});
-    });
-  }
-}); // ✅ closes window.addEventListener
+    const nameInput = document.getElementById("playerNameInput");
+    if(nameInput){
+      nameInput.addEventListener("blur", async (e) => {
+        const nm = (e.target.value||"PLAYER").toUpperCase().slice(0,8);
+        localStorage.setItem(PLAYER_NAME_KEY, nm);
+        try{ await saveNameToFirebase(nm); } catch(err){ console.warn(err); }
+        updateLeaderboardDisplay().catch(()=>{});
+      });
+    }
+  });
 
-// expose helpers for debugging
-window.firebaseIntegration = {
-  saveScoreToFirebase,
-  saveNameToFirebase,
-  updateLeaderboardDisplay,
-  loadLeaderboard,
-  loadLeaderboard
-};
+  // expose helpers for debugging
+  window.firebaseIntegration = {
+    saveScoreToFirebase,
+    saveNameToFirebase,
+    updateLeaderboardDisplay,
+    loadLeaderboard
+  };
 
-})(); // ✅ closes the self-invoking Firebase wrapper
+})();
 </script>
-
 
 <!-- End Firebase integration -->
 </body>
