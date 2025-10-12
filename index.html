@@ -1397,11 +1397,29 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
       li.innerHTML = `<span>#${i+1}</span><span>${name}</span><span class="rank-score">${score}s</span>`;
       listEl.appendChild(li);
     });
-    // update local best display if present
-    const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
-    const localBestEl = document.getElementById("localBestScore");
-    if(localBestEl) localBestEl.textContent = `${localBest}s`;
+   // ✅ Update display with user's Firebase high score instead of local best
+const localBestEl = document.getElementById("localBestScore");
+if (localBestEl) {
+  try {
+    const user = await waitForAuth();
+    if (user) {
+      const ref = db.collection("leaderboard").doc(user.uid);
+      const snap = await ref.get();
+      if (snap.exists) {
+        const data = snap.data();
+        localBestEl.textContent = `${data.score || 0}s`;
+      } else {
+        localBestEl.textContent = "0s";
+      }
+    } else {
+      localBestEl.textContent = "0s";
+    }
+  } catch (err) {
+    console.warn("Error loading user highscore:", err);
+    localBestEl.textContent = "0s";
   }
+}
+
 
   // Wrap the game's gameOver function to save + update leaderboard
   const originalGameOver = window.gameOver || function(){};
