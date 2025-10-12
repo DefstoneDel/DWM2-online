@@ -1404,14 +1404,24 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   }
 
   // Wrap the game's gameOver function to save + update leaderboard
-  const originalGameOver = window.gameOver || function(){};
-  window.gameOver = async function(){
-    try { originalGameOver(); } catch(e){ console.warn("originalGameOver error:", e); }
-    const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
-    const score = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
-    await saveScoreToFirebase(name, score);
-    await updateLeaderboardDisplay();
-  };
+const originalGameOver = window.gameOver || function(){};
+window.gameOver = async function(){
+  try { originalGameOver(); } catch(e){ console.warn("originalGameOver error:", e); }
+
+  // Try to read the most recent in-game score
+  const scoreText = document.getElementById("finalScoreText")?.innerText || "";
+  const match = scoreText.match(/(\d+)/);
+  const finalScore = match ? Number(match[1]) : 0;
+
+  // Compare with local best (updated inside originalGameOver)
+  const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+  const scoreToUpload = Math.max(finalScore, localBest);
+
+  const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
+  await saveScoreToFirebase(name, scoreToUpload);
+  await updateLeaderboardDisplay();
+};
+
 
   // Hook name input blur to save name to Firestore and refresh board
   window.addEventListener("load", () => {
