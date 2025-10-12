@@ -1433,30 +1433,31 @@ if (localBestEl) {
 
   // Hook name input blur to save name to Firestore and refresh board
   window.addEventListener("load", () => {
-    // initial leaderboard refresh
-    updateLeaderboardDisplay().catch(()=>{});
+  // initial leaderboard refresh
+  updateLeaderboardDisplay().catch(()=>{});
 
-    const nameInput = document.getElementById("playerNameInput");
-    if(nameInput){
-      nameInput.addEventListener("blur", async (e) => {
-        const nm = (e.target.value||"PLAYER").toUpperCase().slice(0,8);
-        localStorage.setItem(PLAYER_NAME_KEY, nm);
-        try{ await saveNameToFirebase(nm); } catch(err){ console.warn(err); }
-        updateLeaderboardDisplay().catch(()=>{});
-      });
-    }
-  });
+  const nameInput = document.getElementById("playerNameInput");
+  if(nameInput){
+    nameInput.addEventListener("blur", async (e) => {
+      const nm = (e.target.value||"PLAYER").toUpperCase().slice(0,8);
+      localStorage.setItem(PLAYER_NAME_KEY, nm);
+      try{ await saveNameToFirebase(nm); } catch(err){ console.warn(err); }
+      updateLeaderboardDisplay().catch(()=>{});
+    });
+  }
+}); // ✅ closes window.addEventListener
 
-  // expose helpers for debugging
-  window.firebaseIntegration = {
-    saveScoreToFirebase,
-    saveNameToFirebase,
-    updateLeaderboardDisplay,
-    loadLeaderboard
-  };
+// expose helpers for debugging
+window.firebaseIntegration = {
+  saveScoreToFirebase,
+  saveNameToFirebase,
+  updateLeaderboardDisplay,
+  loadLeaderboard
+};
 
-})();
+})(); // ✅ closes the self-invoking Firebase wrapper
 </script>
+
 
 <!-- End Firebase integration -->
 </body>
