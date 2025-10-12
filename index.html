@@ -745,33 +745,48 @@
             }
         }
 
-        async async function displayWorldRanking() {
-            const localBest = loadLocalBest();
-            const playerName = loadPlayerName(); 
-            
-            const filteredScores = if(window.firebaseIntegration && window.firebaseIntegration.loadLeaderboard){ const scores = await window.firebaseIntegration.loadLeaderboard().filter(item => item.name !== "YOU");
-            const allScores = [...filteredScores];
+        async function displayWorldRanking() {
+  const localBest = loadLocalBest();
+  const playerName = loadPlayerName();
 
-            allScores.push({ name: playerName, score: localBest });
+  let filteredScores = [];
 
-            allScores.sort((a, b) => b.score - a.score);
+  // ✅ Load scores from Firebase safely
+  if (window.firebaseIntegration && window.firebaseIntegration.loadLeaderboard) {
+    try {
+      const scores = await window.firebaseIntegration.loadLeaderboard();
+      filteredScores = scores.filter(item => item.name !== "YOU");
+    } catch (err) {
+      console.warn("Error loading leaderboard:", err);
+      filteredScores = [];
+    }
+  }
 
-            globalRankList.innerHTML = '';
-            
-            const scoresToShow = allScores.slice(0, 5);
-            
-            scoresToShow.forEach((item, index) => {
-                const isPlayer = item.name === playerName && item.score === localBest;
-                const li = document.createElement('li');
-                li.className = isPlayer ? 'rank-highlight' : '';
-                li.innerHTML = `<span class="rank-rank">#${index + 1}</span> 
-                                     <span>${item.name}</span>
-                                     <span class="rank-score">${formatScore(item.score)}</span>`;
-                globalRankList.appendChild(li);
-            });
-            
-            localBestScoreDisplay.textContent = formatScore(localBest);
-        }
+  const allScores = [...filteredScores];
+  allScores.push({ name: playerName, score: localBest });
+
+  // ✅ Sort highest score first
+  allScores.sort((a, b) => b.score - a.score);
+
+  // ✅ Update display
+  globalRankList.innerHTML = "";
+  const scoresToShow = allScores.slice(0, 5);
+
+  scoresToShow.forEach((item, index) => {
+    const isPlayer = item.name === playerName && item.score === localBest;
+    const li = document.createElement("li");
+    li.className = isPlayer ? "rank-highlight" : "";
+    li.innerHTML = `
+      <span class="rank-rank">#${index + 1}</span> 
+      <span>${item.name}</span>
+      <span class="rank-score">${formatScore(item.score)}</span>
+    `;
+    globalRankList.appendChild(li);
+  });
+
+  localBestScoreDisplay.textContent = formatScore(localBest);
+}
+
 
         // --- Customization Logic ---
         function loadCustomization() {
