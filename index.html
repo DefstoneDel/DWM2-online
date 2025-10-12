@@ -1274,10 +1274,19 @@
   };
 
   // Initialize Firebase
-  try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn("firebase init:", e); }
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-  let currentUser = null;
+try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn("firebase init:", e); }
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser = null;
+
+// ✅ Keep the same anonymous user between reloads
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .then(() => {
+    console.log("Anonymous auth persistence enabled (LOCAL).");
+    // Try to sign in anonymously immediately
+    return auth.signInAnonymously();
+  })
+  .catch(e => console.warn("Failed to set persistence or sign in:", e));
 
   // Small helper to wait for auth to be ready (max timeout)
   function waitForAuth(timeout=5000){
@@ -1294,12 +1303,10 @@
   auth.onAuthStateChanged(user => {
     if(user) currentUser = user;
     else {
-      auth.signInAnonymously().catch(e => console.warn("anon sign-in (onAuth) failed:", e));
-    }
+     
   });
 
-  // Try to sign in anonymously immediately
-  auth.signInAnonymously().catch(e => console.warn("anon sign-in failed:", e));
+
 
   // Save or update score (only if it's better than existing)
   async function saveScoreToFirebase(name, score){
