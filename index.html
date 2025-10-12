@@ -1305,7 +1305,8 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     // Try to sign in anonymously immediately
     return auth.signInAnonymously();
   })
-  .catch(e => console.warn("Failed to set persistence or sign in:", e);
+  .catch(e => console.warn("Failed to set persistence or sign in:", e));
+
 
   // Small helper to wait for auth to be ready (max timeout)
   function waitForAuth(timeout=5000){
