@@ -740,11 +740,15 @@
             return name ? name.toUpperCase() : 'PLAYER';
         }
 
-        function savePlayerName(name) {
-            if (name) {
-                localStorage.setItem(PLAYER_NAME_KEY, name.toUpperCase().trim().slice(0, 8);
-            }
-        }
+       function savePlayerName(name) {
+  if (name) {
+    localStorage.setItem(
+      PLAYER_NAME_KEY,
+      name.toUpperCase().trim().slice(0, 8)
+    );
+  }
+}
+
 
         async function displayWorldRanking() {
   const localBest = loadLocalBest();
@@ -1309,18 +1313,18 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
 
 
   // Small helper to wait for auth to be ready (max timeout)
-  function waitForAuth(timeout=5000){
-    return new Promise(resolve=>{
-      const start = Date.now();
-      (function check(){
-        if(currentUser) return resolve(currentUser);
-        if(Date.now() - start > timeout) return resolve(null);
-        setTimeout(check, 150);
-      })();
-    });
-  }
+ function waitForAuth(timeout = 5000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    (function check() {
+      if (currentUser) return resolve(currentUser);
+      if (Date.now() - start > timeout) return resolve(null);
+      setTimeout(check, 150);
+    })();
+  });
+}
 
-  auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged((user) => {
   if (user) {
     currentUser = user;
     console.log("Signed in as:", currentUser.uid);
@@ -1330,9 +1334,10 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
       .then(() => {
         console.log("Signed in anonymously.");
       })
-      .catch(e => console.warn("Anonymous sign-in failed:", e);
+      .catch((e) => console.warn("Anonymous sign-in failed:", e));
   }
 });
+
 
 
 
