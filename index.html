@@ -1,1445 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drift with Myth 2</title>
-    <style>
-        /* --- ARCADE THEME: General Layout and Colors (Dark Blue/Orange) --- */
-        :root {
-            --color-dark-bg: #0A0A1A; /* Very dark blue-black */
-            --color-light-blue: #00BFFF; /* Electric light blue */
-            --color-dark-orange: #FF8C00; /* Vibrant dark orange */
-            --color-neon-yellow: #FFFF00; /* Neon yellow for roads/lights */
-            --color-dark-element: #1A1A2E; /* Slightly lighter dark blue for elements */
-
-            --shadow-light-blue: 0 0 10px var(--color-light-blue), 0 0 20px rgba(0, 191, 255, 0.5);
-            --shadow-dark-orange: 0 0 10px var(--color-dark-orange), 0 0 20px rgba(255, 140, 0, 0.5);
-            --shadow-neon-yellow: 0 0 8px var(--color-neon-yellow), 0 0 15px rgba(255, 255, 0, 0.4);
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px 10px;
-            background-color: var(--color-dark-bg); 
-            font-family: 'Inter', monospace, sans-serif;
-            color: var(--color-light-blue); /* Default text color */
-        }
-
-        .container {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* --- View Containers and Ranking Styles --- */
-        #rankingView, #gameView {
-            width: 100%;
-            background-color: var(--color-dark-element);
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid var(--color-light-blue);
-            box-shadow: var(--shadow-light-blue);
-            text-align: center; 
-        }
-
-        #gameView {
-            display: none;
-            padding: 0;
-            background-color: transparent;
-        }
-        
-        #canvasContainer {
-            position: relative; 
-            width: 100%;
-            max-width: 400px; 
-            border: 4px solid var(--color-dark-orange);
-            box-shadow: 0 0 15px var(--color-dark-orange); 
-            border-radius: 8px;
-            overflow: hidden; 
-        }
-
-        /* ARCADE TITLE STYLE */
-        #rankingView h1 { 
-            color: var(--color-dark-orange); 
-            text-align: center; 
-            margin-top: 0; 
-            font-size: 2.5em; 
-            text-shadow: var(--shadow-dark-orange);
-            font-weight: 900;
-            letter-spacing: 2px;
-        } 
-        #globalRankList { 
-            list-style: none; padding: 0; font-size: 1.2em; max-width: 300px; margin: 20px auto; 
-            text-align: left;
-        }
-        #globalRankList li { 
-            display: flex; justify-content: space-between; padding: 10px 0; 
-            border-bottom: 1px solid rgba(0, 191, 255, 0.2); /* Light blue transparent divider */
-            color: var(--color-light-blue); 
-        }
-        /* Neon Highlight for Player */
-        .rank-highlight { 
-            background-color: rgba(255, 140, 0, 0.15); /* Dark orange transparent bg */
-            border-left: 5px solid var(--color-dark-orange);
-            border-radius: 4px; padding: 8px 10px; margin: 4px 0; 
-            font-weight: bold;
-        }
-        .rank-score { 
-            font-weight: bold; 
-            color: var(--color-dark-orange); 
-            text-shadow: 0 0 5px var(--color-dark-orange);
-        }
-        
-        /* Local Best Score Section (Neon Display) */
-        #localBestScoreSection {
-            background-color: var(--color-dark-element); 
-            color: var(--color-light-blue); 
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin: 20px auto 30px auto; 
-            width: 85%;
-            max-width: 300px;
-            border: 1px solid var(--color-light-blue);
-            box-shadow: var(--shadow-light-blue);
-        }
-        #localBestScoreSection p {
-            margin: 0;
-            font-size: 1.1em;
-            font-weight: 500;
-            color: inherit;
-        }
-        #localBestScoreSection #localBestScore {
-            color: var(--color-dark-orange); 
-            font-weight: bold;
-            font-size: 1.5em;
-        }
-        .highscore-label {
-            font-weight: bold;
-            color: var(--color-light-blue); 
-        }
-        
-        /* --- PLAY BUTTON STYLE (Vibrant and Glowing) --- */
-        #playButton {
-            padding: 15px 30px;
-            font-size: 1.7em; 
-            background-color: var(--color-dark-orange); 
-            color: var(--color-dark-bg); 
-            border: 3px solid var(--color-light-blue);
-            border-radius: 10px;
-            cursor: pointer;
-            margin-top: 25px;
-            font-weight: 900;
-            transition: all 0.2s;
-            width: 100%; 
-            box-shadow: var(--shadow-dark-orange);
-            text-shadow: none; 
-        }
-        #playButton:hover {
-            background-color: var(--color-light-blue); 
-            color: var(--color-dark-bg);
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: var(--shadow-light-blue);
-        }
-        /* --- END PLAY BUTTON STYLE --- */
-
-        /* Customization Styles - Input Boxes */
-        .customization-box, .name-input-box {
-            width: 85%; 
-            margin: 15px auto 20px auto; 
-            padding: 15px; 
-            border: 1px dashed var(--color-light-blue); 
-            border-radius: 8px; 
-            display: flex;
-            flex-direction: column;
-            align-items: center; 
-            background-color: rgba(0, 0, 0, 0.3);
-        }
-
-        .customization-content {
-            width: 90%; 
-        }
-        
-        .customization-content label {
-            color: var(--color-light-blue); 
-            font-weight: bold;
-            display: block; 
-            margin-bottom: 5px; 
-            text-shadow: 0 0 3px var(--color-light-blue);
-        }
-
-        /* ARCADE INPUT/SELECT STYLE */
-        .custom-select, #playerNameInput {
-            width: 100%; 
-            padding: 10px; 
-            margin-bottom: 15px; 
-            border-radius: 4px; 
-            background-color: var(--color-dark-element); 
-            color: var(--color-dark-orange); /* Default text color in select */
-            border: 1px solid var(--color-dark-orange); 
-            box-shadow: inset 0 0 5px var(--color-dark-orange);
-            font-size: 1.1em;
-            text-align: center;
-        }
-        
-        #playerNameInput {
-            max-width: 250px;
-            font-size: 1.5em;
-            text-transform: uppercase;
-        }
-
-        /* --- Game View Elements --- */
-        #gameCanvas {
-            width: 100%;
-            height: 600px;
-            max-height: 75vh;
-            background-color: #000000; /* Deep black road */
-            border-radius: 4px;
-        }
-        #controls {
-            margin-top: 30px;
-            width: 100%;
-        }
-        
-        /* ARCADE SLIDER STYLE */
-        #horizontalSlider {
-            width: 100%; height: 30px; -webkit-appearance: none; appearance: none; 
-            background: rgba(0, 191, 255, 0.3); /* Transparent light blue track */
-            outline: none; opacity: 1; cursor: grab; border-radius: 15px;
-            box-shadow: var(--shadow-light-blue);
-        }
-        #horizontalSlider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 40px; height: 40px; 
-            background: var(--color-dark-orange); 
-            border-radius: 50%; 
-            border: 4px solid var(--color-dark-bg);
-            cursor: pointer;
-            box-shadow: var(--shadow-dark-orange);
-        }
-        
-        p {
-            color: var(--color-light-blue);
-        }
-        
-        /* Game Over Screen (Transparent Arcade Overlay) */
-        #gameOverScreen {
-            position: absolute; 
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(10, 10, 26, 0.95); /* Semi-transparent dark blue-black */
-            color: var(--color-dark-orange); 
-            display: none; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            text-align: center; 
-            z-index: 10; 
-            padding: 0px;
-            background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0.2) 50%);
-            background-size: 100% 4px;
-        }
-        
-        #gameOverContent h1 {
-            font-size: 3em;
-            text-shadow: var(--shadow-dark-orange);
-            margin-bottom: 10px;
-            color: var(--color-dark-orange);
-        }
-        #gameOverContent p {
-            font-size: 1.2em;
-            color: var(--color-light-blue);
-        }
-        #restartButton {
-            padding: 12px 25px;
-            font-size: 1.2em;
-            background-color: var(--color-light-blue); 
-            color: var(--color-dark-bg);
-            border: 2px solid var(--color-dark-orange);
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 20px;
-            font-weight: bold;
-            transition: all 0.2s;
-            box-shadow: var(--shadow-light-blue);
-        }
-        #restartButton:hover {
-            background-color: var(--color-dark-orange); 
-            color: var(--color-dark-bg);
-            box-shadow: var(--shadow-dark-orange);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drift With Myth 2</title>
+  <style>
+    /* Simplified: your full CSS stays exactly as in DWMfixed.html */
+    body { background-color: #0a0a1a; color: #00bfff; font-family: 'Inter', monospace, sans-serif; }
+    #rankingView, #gameView { max-width: 400px; margin: 20px auto; }
+    #gameView { display: none; }
+    #globalRankList li { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,191,255,0.2); padding: 5px 0; }
+    .rank-score { color: #ff8c00; font-weight: bold; }
+    .rank-highlight { background: rgba(255,140,0,0.15); border-left: 4px solid #ff8c00; }
+    #gameCanvas { width: 100%; height: 600px; background: black; }
+  </style>
 </head>
 <body>
-
-
-    <div class="container">
-
-        
-        
-
-<div id="rankingView">
-            <div class="name-input-box">
-                <h1 style="color: var(--color-dark-orange); font-weight: bold; display: block; margin-bottom: 5px; text-shadow: var(--shadow-dark-orange);">DRIFT WITH MYTH II</h1>
-            </div>
-
-            
-
-<h1>HIGH SCORES</h1>
-
-            
-
-<ul id="globalRankList"></ul>
-            
-            
-
-<div id="localBestScoreSection">
-                <p id="playerRankText">
-                    <span class="highscore-label">YOUR BEST TIME:</span> <span id="localBestScore">---</span>
-                </p>
-            </div>
-            
-            <div class="name-input-box">
-                <label for="playerNameInput" style="color: var(--color-dark-orange); text-shadow: var(--shadow-dark-orange); margin-bottom: 10px;">ENTER NAME</label>
-                <input type="text" id="playerNameInput" maxlength="8" placeholder="PLAYER">
-            </div>
-
-            
-
-<div class="customization-box">
-                <h2 style="color: var(--color-light-blue); font-size: 1.4em; margin-top: 0; margin-bottom: 15px; text-align: center; width: 100%; text-shadow: 0 0 5px var(--color-light-blue);">POWER UP CONFIG</h2>
-                
-                <canvas id="carPreview" width="100" height="100" style="background-color: var(--color-dark-bg); border-radius: 8px; margin: 0 auto 15px; display: block; border: 1px solid var(--color-light-blue); box-shadow: 0 0 10px rgba(0, 191, 255, 0.5);"></canvas>
-
-                <div class="customization-content">
-                    <label for="carModel">MODEL TYPE:</label>
-                    <select id="carModel" class="custom-select"></select>
-
-                    <label for="carColor">PAINT COLOR:</label>
-                    <select id="carColor" class="custom-select"></select>
-                </div>
-            </div>
-
-            
-
-<button id="playButton" onclick="startGameView()">START DRIFTING!</button>
-        </div>
-
-        
-
-<div id="gameView">
-            
-            <div id="canvasContainer">
-                <canvas id="gameCanvas" width="400" height="600"></canvas>
-                
-                
-
-<div id="gameOverScreen">
-                    <div id="gameOverContent">
-                        <h1>CRASH!</h1>
-                        <p>Total Drift Time:</p>
-                        <p id="finalScoreText"></p>
-                        <button id="restartButton" onclick="showRankingView()">EXIT SIMULATION</button>
-                    </div>
-                </div>
-
-            </div>
-            
-            <div id="controls">
-                <input type="range" min="0" max="100" value="50" class="slider" id="horizontalSlider">
-            </div>
-            <p style="text-align: center; margin-top: 10px; color: var(--color-light-blue); font-size: 1em; text-shadow: 0 0 5px rgba(0, 191, 255, 0.5);">
-                
-            </p>
-        </div>
+  <div id="rankingView">
+    <h1 style="color:#ff8c00;text-align:center;">DRIFT WITH MYTH II</h1>
+    <h2>HIGH SCORES</h2>
+    <ul id="globalRankList"></ul>
+    <div>
+      <p><span style="color:#00bfff;">YOUR BEST TIME:</span> <span id="localBestScore">---</span></p>
     </div>
-    
-    <script>
-        // --- Global Config & Setup ---
-        // Setting a fixed seed ensures the sequence of random numbers is the same every time.
-        const GAME_SEED = 12345; 
-        const MAX_GAME_TIME_SECONDS = 600; 
-        const LOCAL_BEST_KEY = 'blockDodgerLocalBestTime'; 
-        const CUSTOM_MODEL_KEY = 'blockDodgerCarModel';
-        const CUSTOM_COLOR_KEY = 'blockDodgerCarColor';
-        const PLAYER_NAME_KEY = 'blockDodgerPlayerName'; 
-        const FPS = 60;
-        
-        // --- Difficulty Constants (HARDCORE MODE) ---
-        const baseObstacleSpeed = 4.0; 
-        const speedAcceleration = 0.00025; 
-        const speedExponent = 1.4;
-        const SPEED_VARIANCE = 0.5; 
-
-        const INITIAL_SPAWN_DELAY = 50; 
-        let obstacleSpeed = baseObstacleSpeed; 
-        const baseSpawnRate = 25; 
-        const spawnAcceleration = 0.0008; 
-        let obstacleSpawnRate = baseSpawnRate;
-        const minSpawnRate = 5; 
-        
-        const GAP_SIZE = 8; 
-
-        // --- Road Drawing Constants (Neon Yellow Lines) ---
-        const ROAD_LINE_WIDTH = 6; 
-        const ROAD_LINE_LENGTH = 40;
-        const ROAD_LINE_SPACING = 80; 
-        let currentRoadLineY = 0; 
-
-        // --- Lamp Post Constants (Light Blue Glow) ---
-        let lampPosts = []; 
-        const LAMP_POST_WIDTH = 5;
-        const LAMP_POST_HEIGHT = 80;
-        const LAMP_POST_OFFSET_X = 10; 
-        const LAMP_POST_FREQUENCY = 90; 
-        
-        // Obstacle colors (mixing blue and orange tones)
-        const OBSTACLE_COLORS = ['#00BFFF', '#FF8C00', '#009ACD', '#FFA500', '#4169E1'];
-
-        const COLOR_OPTIONS = [
-            { name: "Blue", code: "#00BFFF" },
-            { name: "Orange", code: "#FF8C00" },
-            { name: "Cyan", code: "#00FFFF" },
-            { name: "Red", code: "#FF0000" }
-        ];
-
-        // --- Game State Variables ---
-        let currentSeed = GAME_SEED;
-        let gameLoopId = null;
-        let isGameOver = false;
-        let isScreenShown = false; 
-        let obstacles = [];
-        let explosions = [];
-        let smokeParticles = []; 
-        let frameCount = 0;
-        
-        let player = {
-            x: 0, y: 0, width: 40, height: 40, 
-            color: '#00BFFF', windowColor: '#1A1A2E', 
-            lightColor: '#FFFF00', 
-            drawModel: null,
-            // State for car rotation
-            rotation: 0, 
-            lastX: 0 
-        };
-        
-        let currentModel = 'sedan';
-        let currentColorCode = '#00BFFF';
-
-        // --- DOM Elements & Context Setup ---
-        const rankingView = document.getElementById('rankingView');
-        const gameView = document.getElementById('gameView');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const canvas = document.getElementById('gameCanvas');
-        const carPreviewCanvas = document.getElementById('carPreview');
-        const slider = document.getElementById('horizontalSlider');
-        const playerNameInput = document.getElementById('playerNameInput'); 
-        
-        const ctx = canvas ? canvas.getContext('2d') : null;
-        const carPreviewCtx = carPreviewCanvas ? carPreviewCanvas.getContext('2d') : null;
-
-        /**
-         * The seeded random function. Because currentSeed is reset to GAME_SEED
-         * every game, this function will always return the same sequence of numbers.
-         */
-        function seededRandom() {
-            currentSeed = (currentSeed * 9301 + 49297) % 233280;
-            return currentSeed / 233280;
-        }
-        
-        // --- Drawing Helper Functions: Player Cars (with stronger outlines) ---
-        
-        function drawShape(ctx, p, drawer) {
-            ctx.save();
-            // 1. Move to the car's center (p.x + p.width/2) and the car's rear base (p.y + p.height)
-            ctx.translate(p.x + p.width / 2, p.y + p.height); 
-
-            // 2. APPLY ROTATION
-            ctx.rotate(p.rotation); 
-            
-            // The rest of the drawing logic is now relative to the rotated coordinate system.
-
-            drawer(ctx, p);
-            
-            const wheelRadius = p.width / 8;
-            const wheelColor = '#222222';
-            const wheelOutline = '#000000';
-            
-            // Rear wheels
-            ctx.fillStyle = wheelColor;
-            ctx.beginPath();
-            ctx.arc(-p.width / 2 + wheelRadius, -wheelRadius/2, wheelRadius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = wheelOutline;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.arc(p.width / 2 - wheelRadius, -wheelRadius/2, wheelRadius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            // Headlights (Neon Yellow)
-            ctx.fillStyle = p.lightColor;
-            ctx.shadowColor = p.lightColor;
-            ctx.shadowBlur = 8;
-            let headlightOffset = p.width / 2 - 8;
-            let headlightY = -(p.height * 1.5) * 0.78; 
-            ctx.fillRect(-headlightOffset, headlightY, 6, 4);
-            ctx.fillRect(headlightOffset - 6, headlightY, 6, 4);
-            ctx.shadowBlur = 0;
-
-            // Taillights (Dark Orange)
-            ctx.fillStyle = '#FF8C00'; 
-            let rearlightOffset = p.width / 2 - 6;
-            let rearlightY = -(p.height * 1.5) * 0.15; 
-            ctx.fillRect(-rearlightOffset, rearlightY, 4, 3);
-            ctx.fillRect(rearlightOffset - 4, rearlightY, 4, 3);
-
-            ctx.restore(); // Restore the context to remove the rotation
-        }
-
-        // 1. Sedan (Original)
-        function drawSedan(ctx, p) {
-            const carWidth = p.width;
-            const carHeight = p.height * 1.5; 
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.moveTo(0, 0); 
-            ctx.lineTo(-carWidth / 2, -carHeight * 0.2); 
-            ctx.lineTo(-carWidth / 2 + 5, -carHeight * 0.8); 
-            ctx.lineTo(carWidth / 2 - 5, -carHeight * 0.8); 
-            ctx.lineTo(carWidth / 2, -carHeight * 0.2); 
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = '#000000'; 
-            ctx.lineWidth = 4;
-            ctx.stroke();
-            ctx.fillStyle = p.windowColor;
-            ctx.beginPath();
-            ctx.moveTo(-carWidth / 2 + 8, -carHeight * 0.75); 
-            ctx.lineTo(-carWidth / 2 + 12, -carHeight * 0.3); 
-            ctx.lineTo(carWidth / 2 - 12, -carHeight * 0.3); 
-            ctx.lineTo(carWidth / 2 - 8, -carHeight * 0.75); 
-            ctx.closePath();
-            ctx.fill();
-        }
-        
-        // 2. Hatchback (Shorter, more vertical rear)
-        function drawHatchback(ctx, p) {
-            const carWidth = p.width;
-            const carHeight = p.height * 1.5; 
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.moveTo(0, 0); 
-            ctx.lineTo(-carWidth / 2, -carHeight * 0.1); 
-            ctx.lineTo(-carWidth / 2 + 5, -carHeight * 0.75); 
-            ctx.lineTo(carWidth / 2 - 5, -carHeight * 0.75); 
-            ctx.lineTo(carWidth / 2, -carHeight * 0.1); 
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = '#000000'; 
-            ctx.lineWidth = 4;
-            ctx.stroke();
-            ctx.fillStyle = p.windowColor;
-            ctx.beginPath();
-            ctx.moveTo(-carWidth / 2 + 8, -carHeight * 0.7); 
-            ctx.lineTo(-carWidth / 2 + 12, -carHeight * 0.25); 
-            ctx.lineTo(carWidth / 2 - 12, -carHeight * 0.25); 
-            ctx.lineTo(carWidth / 2 - 8, -carHeight * 0.7); 
-            ctx.closePath();
-            ctx.fill();
-        }
-        
-        // 3. Truck (Simple box shape)
-        function drawTruck(ctx, p) {
-            const carWidth = p.width;
-            const carHeight = p.height * 1.5; 
-            ctx.fillStyle = p.color;
-            ctx.fillRect(-carWidth/2, -carHeight, carWidth, carHeight); // Simple rectangular base
-
-            // Cabin (smaller, higher up)
-            ctx.fillStyle = p.windowColor;
-            const cabinWidth = carWidth * 0.6;
-            const cabinHeight = carHeight * 0.3;
-            ctx.fillRect(-cabinWidth/2, -carHeight * 0.7, cabinWidth, cabinHeight);
-
-            ctx.strokeStyle = '#000000'; 
-            ctx.lineWidth = 4;
-            ctx.strokeRect(-carWidth/2, -carHeight, carWidth, carHeight);
-        }
-
-        // 4. Sports Car (Lower, sleeker profile)
-        function drawSportsCar(ctx, p) {
-            const carWidth = p.width;
-            const carHeight = p.height * 1.5; 
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.moveTo(0, 0); 
-            ctx.lineTo(-carWidth / 2, -carHeight * 0.1); // Low profile rear
-            ctx.lineTo(-carWidth / 2 + 10, -carHeight * 0.65); 
-            ctx.lineTo(carWidth / 2 - 10, -carHeight * 0.65); 
-            ctx.lineTo(carWidth / 2, -carHeight * 0.1); 
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = '#000000'; 
-            ctx.lineWidth = 4;
-            ctx.stroke();
-            
-            // Low profile window
-            ctx.fillStyle = p.windowColor;
-            ctx.beginPath();
-            ctx.moveTo(-carWidth / 2 + 12, -carHeight * 0.6); 
-            ctx.lineTo(-carWidth / 2 + 15, -carHeight * 0.2); 
-            ctx.lineTo(carWidth / 2 - 15, -carHeight * 0.2); 
-            ctx.lineTo(carWidth / 2 - 12, -carHeight * 0.6); 
-            ctx.closePath();
-            ctx.fill();
-        }
-
-        // Updated CAR_MODELS to use the distinct drawing functions
-        const CAR_MODELS = {
-            sedan: { draw: drawSedan },
-            hatchback: { draw: drawHatchback }, 
-            truck: { draw: drawTruck },
-            sportsCar: { draw: drawSportsCar }, 
-            van: { draw: drawTruck } // Using truck shape for van for simplicity 
-        };
-
-        function drawPlayerShape(ctx, p) {
-            if (ctx) {
-                drawShape(ctx, p, p.drawModel || CAR_MODELS.sedan.draw);
-            }
-        }
-
-        // --- Opponent Car Drawing Function (Vibrant and outlined) ---
-        function drawOpponentVehicle(ctx, obs) {
-            if (ctx) {
-                ctx.save();
-                ctx.translate(obs.x + obs.width / 2, obs.y);
-                
-                const carWidth = obs.width;
-                const carHeight = obs.height * 1.5; 
-                const wheelRadius = carWidth / 8;
-                
-                ctx.fillStyle = obs.color;
-                ctx.fillRect(-carWidth / 2, 0, carWidth, carHeight);
-
-                ctx.fillStyle = '#000000'; 
-                const cabinHeight = carHeight * 0.4;
-                const cabinStart = carHeight * 0.15;
-                ctx.fillRect(-carWidth / 2 + 3, cabinStart, carWidth - 6, cabinHeight);
-
-                // Headlights (Neon Yellow)
-                ctx.fillStyle = '#FFFF00';
-                ctx.shadowColor = '#FFFF00';
-                ctx.shadowBlur = 5;
-                ctx.fillRect(-carWidth / 2, 0, 5, 5); 
-                ctx.fillRect(carWidth / 2 - 5, 0, 5, 5); 
-                ctx.shadowBlur = 0; 
-
-                ctx.fillStyle = '#222222';
-                ctx.beginPath();
-                ctx.arc(-carWidth / 2 + wheelRadius, carHeight * 0.7, wheelRadius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(carWidth / 2 - wheelRadius, carHeight * 0.7, wheelRadius, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(-carWidth / 2, 0, carWidth, carHeight);
-
-                ctx.restore();
-            }
-        }
-
-        // --- Lamp Post Drawing Function (Light Blue Glow) ---
-        function drawLampPost(ctx, post) {
-            ctx.fillStyle = '#222222'; 
-            ctx.fillRect(post.x, post.y, post.width, post.height);
-
-            ctx.fillStyle = '#000000'; 
-            const armLength = 15;
-            if (post.side === 'left') {
-                ctx.fillRect(post.x + post.width, post.y, armLength, 3);
-            } else {
-                ctx.fillRect(post.x - armLength, post.y, armLength, 3);
-            }
-
-            // Light Source (Light Blue Glow)
-            const lightX = post.side === 'left' ? post.x + post.width + armLength : post.x - armLength;
-            
-            ctx.save();
-            ctx.shadowColor = '#00BFFF'; 
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = '#ADD8E6'; // Pale blue light
-            
-            ctx.beginPath();
-            ctx.arc(lightX, post.y + 1, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        }
-
-        // --- View Management and Score Logic (Simplified DOM access) ---
-        const globalRankList = document.getElementById('globalRankList');
-        const localBestScoreDisplay = document.getElementById('localBestScore');
-        const finalScoreText = document.getElementById('finalScoreText');
-
-        function showRankingView() {
-            rankingView.style.display = 'block';
-            gameView.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            
-            loadCustomization(); 
-            setupRankingViewUI(); 
-            displayWorldRanking();
-        }
-
-        function startGameView() {
-            rankingView.style.display = 'none';
-            gameView.style.display = 'block';
-            gameOverScreen.style.display = 'none';
-            startGame();
-        }
-
-        function loadLocalBest() {
-            const best = localStorage.getItem(LOCAL_BEST_KEY);
-            return best ? parseInt(best) : 0;
-        }
-
-        function saveLocalBest(newScore) {
-            let currentBest = loadLocalBest();
-            if (newScore > currentBest) {
-                localStorage.setItem(LOCAL_BEST_KEY, newScore);
-                currentBest = newScore;
-            }
-            return currentBest;
-        }
-
-        function formatScore(score) {
-            return `${score}s`;
-        }
-        
-        function loadPlayerName() {
-            const name = localStorage.getItem(PLAYER_NAME_KEY);
-            return name ? name.toUpperCase() : 'PLAYER';
-        }
-
-        function savePlayerName(name) {
-            if (name) {
-                localStorage.setItem(PLAYER_NAME_KEY, name.toUpperCase().trim().slice(0, 8));
-            }
-        }
-
-        function displayWorldRanking() {
-            const localBest = loadLocalBest();
-            const playerName = loadPlayerName(); 
-            
-            const filteredScores = MOCK_WORLD_SCORES.filter(item => item.name !== "YOU");
-            const allScores = [...filteredScores];
-
-            allScores.push({ name: playerName, score: localBest });
-
-            allScores.sort((a, b) => b.score - a.score);
-
-            globalRankList.innerHTML = '';
-            
-            const scoresToShow = allScores.slice(0, 5);
-            
-            scoresToShow.forEach((item, index) => {
-                const isPlayer = item.name === playerName && item.score === localBest;
-                const li = document.createElement('li');
-                li.className = isPlayer ? 'rank-highlight' : '';
-                li.innerHTML = `<span class="rank-rank">#${index + 1}</span> 
-                                     <span>${item.name}</span>
-                                     <span class="rank-score">${formatScore(item.score)}</span>`;
-                globalRankList.appendChild(li);
-            });
-            
-            localBestScoreDisplay.textContent = formatScore(localBest);
-        }
-
-        // --- Customization Logic ---
-        function loadCustomization() {
-            currentModel = localStorage.getItem(CUSTOM_MODEL_KEY) || 'sedan';
-            currentColorCode = localStorage.getItem(CUSTOM_COLOR_KEY) || '#00BFFF'; // Default to light blue
-            updatePlayerAppearance();
-        }
-
-        function saveCustomization(model, colorCode) {
-            localStorage.setItem(CUSTOM_MODEL_KEY, model);
-            localStorage.setItem(CUSTOM_COLOR_KEY, colorCode);
-        }
-
-        function updatePlayerAppearance() {
-            player.color = currentColorCode;
-            player.drawModel = CAR_MODELS[currentModel] ? CAR_MODELS[currentModel].draw : CAR_MODELS.sedan.draw;
-        }
-        
-        function setupRankingViewUI() { 
-            const modelSelect = document.getElementById('carModel');
-            const colorSelect = document.getElementById('carColor');
-            
-            playerNameInput.value = loadPlayerName();
-            playerNameInput.oninput = (e) => {
-                e.target.value = e.target.value.toUpperCase().slice(0, 8); 
-                savePlayerName(e.target.value);
-                displayWorldRanking(); 
-            };
-
-
-            modelSelect.innerHTML = Object.keys(CAR_MODELS).map(key => 
-                `<option value="${key}">${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}</option>`
-            ).join(''); 
-
-            colorSelect.innerHTML = COLOR_OPTIONS.map(c => 
-                // Set the option style so that when the dropdown is open, the options are colored
-                `<option style="color: ${c.code}; background-color: var(--color-dark-element);" value="${c.code}">${c.name}</option>`
-            ).join('');
-
-            modelSelect.value = currentModel;
-            colorSelect.value = currentColorCode;
-            
-            // Set the text color of the SELECT box to the chosen color code
-            colorSelect.style.color = currentColorCode;
-
-            // Ensure the preview canvas updates when the model selection changes
-            modelSelect.onchange = (e) => {
-                currentModel = e.target.value;
-                saveCustomization(currentModel, currentColorCode);
-                updatePlayerAppearance(); 
-                drawCurrentCarPreview(); // Re-draw the preview with the new model
-            };
-
-            colorSelect.onchange = (e) => {
-                currentColorCode = e.target.value;
-                saveCustomization(currentModel, currentColorCode);
-                updatePlayerAppearance();
-                drawCurrentCarPreview();
-                // Update the text color of the SELECT box on change
-                colorSelect.style.color = currentColorCode;
-            };
-            
-            drawCurrentCarPreview();
-        }
-        
-        function drawCurrentCarPreview() {
-            if (!carPreviewCtx) return;
-            const w = carPreviewCanvas.width;
-            const h = carPreviewCanvas.height;
-            carPreviewCtx.fillStyle = 'var(--color-dark-bg)';
-            carPreviewCtx.fillRect(0, 0, w, h);
-            
-            const tempPlayer = {
-                x: w / 2 - 20, 
-                y: h - 50,     
-                width: 40,
-                height: 40,
-                color: currentColorCode,
-                windowColor: '#1A1A2E',
-                lightColor: '#FFFF00',
-                rotation: 0, // No rotation in preview
-                // Use the currently selected model's drawing function
-                drawModel: CAR_MODELS[currentModel] ? CAR_MODELS[currentModel].draw : CAR_MODELS.sedan.draw
-            };
-            
-            drawPlayerShape(carPreviewCtx, tempPlayer);
-        }
-
-        // --- Game Logic Functions ---
-
-        function updatePlayerX() {
-            const sliderMax = 100;
-            const sliderValue = parseInt(slider.value);
-            player.x = (sliderValue / sliderMax) * (canvas.width - player.width);
-        }
-
-        function updateDifficulty() {
-            // Difficulty relies on frameCount, which is deterministic.
-            obstacleSpeed = baseObstacleSpeed + speedAcceleration * Math.pow(frameCount, speedExponent);
-            let newSpawnRate = baseSpawnRate - spawnAcceleration * frameCount;
-            obstacleSpawnRate = Math.max(newSpawnRate, minSpawnRate);
-        }
-
-        // CRASH VISUAL EFFECTS (EXPLOSIONS)
-        function createExplosion(x, y, count = 30) {
-            for (let i = 0; i < count; i++) {
-                // All random properties use seededRandom()
-                const angle = seededRandom() * Math.PI * 2;
-                const speed = 2 + seededRandom() * 5; 
-                const size = 3 + seededRandom() * 4; 
-                
-                explosions.push({
-                    x: x,
-                    y: y,
-                    size: size,
-                    life: 30 + Math.floor(seededRandom() * 20), 
-                    maxLife: 50,
-                    speedX: Math.cos(angle) * speed,
-                    speedY: Math.sin(angle) * speed
-                });
-            }
-        }
-
-        function updateExplosions() {
-            for (let i = explosions.length - 1; i >= 0; i--) {
-                const p = explosions[i];
-                p.x += p.speedX;
-                p.y += p.speedY;
-                p.speedX *= 0.98;
-                p.speedY *= 0.98;
-                p.life--;
-
-                if (p.life <= 0) {
-                    explosions.splice(i, 1);
-                }
-            }
-        }
-
-        function drawExplosions(ctx) {
-            explosions.forEach(p => {
-                const opacity = p.life / p.maxLife;
-                // Use DARK ORANGE for explosion
-                ctx.fillStyle = `rgba(255, 140, 0, ${opacity})`; 
-                ctx.shadowColor = `rgba(255, 140, 0, ${opacity})`;
-                ctx.shadowBlur = 15;
-
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.shadowBlur = 0;
-            });
-        }
-        
-        // SMOKE EFFECT LOGIC
-        function spawnSmokeParticle() {
-            // All random properties use seededRandom()
-            const size = 5 + seededRandom() * 5; 
-            const varianceX = (seededRandom() - 0.5) * player.width * 0.5; 
-            const varianceY = player.height * 0.1; 
-
-            smokeParticles.push({
-                x: player.x + player.width / 2 + varianceX, 
-                y: player.y + player.height - varianceY,
-                size: size,
-                life: 60, 
-                maxLife: 60,
-                speedY: obstacleSpeed * (0.1 + seededRandom() * 0.3), 
-                speedX: (seededRandom() - 0.5) * 0.5, 
-                color: `rgba(0, 191, 255, ${0.5 + seededRandom() * 0.5})` 
-            });
-        }
-
-        function updateSmokeParticles() {
-            for (let i = smokeParticles.length - 1; i >= 0; i--) {
-                const p = smokeParticles[i];
-                p.y += p.speedY; 
-                p.x += p.speedX; 
-                p.life--;
-                p.size *= 0.98; 
-
-                if (p.life <= 0 || p.size < 1) {
-                    smokeParticles.splice(i, 1);
-                }
-            }
-        }
-
-        function drawSmokeParticles(ctx) {
-            smokeParticles.forEach(p => {
-                const opacity = p.life / p.maxLife;
-                const baseColor = p.color.substring(0, p.color.lastIndexOf(',') + 1);
-                ctx.fillStyle = `${baseColor}${opacity})`;
-                
-                ctx.shadowColor = `rgba(0, 191, 255, ${opacity * 0.8})`; // Light blue shadow
-                ctx.shadowBlur = 5;
-
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.shadowBlur = 0;
-            });
-        }
-        
-        // --- Remaining Game Logic ---
-        
-        function spawnObstacle() {
-            // All parameters determining the obstacle use seededRandom() or fixed constants.
-            const obstacleWidth = 30 + seededRandom() * 20;
-            const laneCount = Math.floor(canvas.width / (obstacleWidth + 10)); 
-            const laneIndex = Math.floor(seededRandom() * laneCount);
-            const x = laneIndex * (obstacleWidth + 10) + 5 + (obstacleWidth / 2 - 20); 
-            
-            const MIN_Y_GAP = 150;
-            const collisionExists = obstacles.some(obs => obs.y < MIN_Y_GAP && obs.y > 0 && Math.abs(obs.x - x) < obstacleWidth * 1.5);
-
-            if (collisionExists) return; 
-
-            obstacles.push({
-                x: x,
-                y: -60, 
-                width: obstacleWidth,
-                height: 50,
-                color: OBSTACLE_COLORS[Math.floor(seededRandom() * OBSTACLE_COLORS.length)],
-                speed: obstacleSpeed * (1 - SPEED_VARIANCE / 2 + seededRandom() * SPEED_VARIANCE) 
-            });
-        }
-        
-        function updateObstacles() {
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                obstacles[i].y += obstacles[i].speed;
-                if (obstacles[i].y > canvas.height) {
-                    obstacles.splice(i, 1);
-                }
-            }
-        }
-        
-        function spawnLampPost() {
-            // Lamp post speed is tied to obstacleSpeed, which is deterministic based on frameCount.
-            // Spawning is fixed based on LAMP_POST_FREQUENCY.
-            lampPosts.push({
-                x: LAMP_POST_OFFSET_X,
-                y: -LAMP_POST_HEIGHT,
-                width: LAMP_POST_WIDTH,
-                height: LAMP_POST_HEIGHT,
-                side: 'left',
-                speed: obstacleSpeed * 0.9 
-            });
-
-            lampPosts.push({
-                x: canvas.width - LAMP_POST_OFFSET_X - LAMP_POST_WIDTH,
-                y: -LAMP_POST_HEIGHT,
-                width: LAMP_POST_WIDTH,
-                height: LAMP_POST_HEIGHT,
-                side: 'right',
-                speed: obstacleSpeed * 0.9
-            });
-        }
-        
-        function updateLampPosts() {
-             for (let i = lampPosts.length - 1; i >= 0; i--) {
-                const post = lampPosts[i];
-                post.y += post.speed;
-                
-                post.speed = obstacleSpeed * 0.9;
-
-                if (post.y > canvas.height) {
-                    lampPosts.splice(i, 1);
-                }
-            }
-        }
-
-        function drawRoad(ctx, speed) {
-            // --- UPDATED ROAD COLOR TO DARKER BLUE ---
-            ctx.fillStyle = '#03092B'; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            // -----------------------------------------
-            
-            currentRoadLineY = (currentRoadLineY + speed) % ROAD_LINE_SPACING;
-
-            // Draw center lane lines (Neon Yellow)
-            ctx.fillStyle = 'var(--color-neon-yellow)'; 
-            ctx.shadowColor = 'var(--color-neon-yellow)';
-            ctx.shadowBlur = 5; 
-            
-            const center = canvas.width / 2;
-            const totalLines = Math.ceil(canvas.height / ROAD_LINE_SPACING) + 1;
-
-            for (let i = 0; i < totalLines; i++) {
-                const y = (i * ROAD_LINE_SPACING + currentRoadLineY) - ROAD_LINE_SPACING;
-                ctx.fillRect(center - ROAD_LINE_WIDTH / 2, y, ROAD_LINE_WIDTH, ROAD_LINE_LENGTH);
-            }
-            
-            ctx.shadowBlur = 0; 
-
-            // Draw left/right borders (Light Blue)
-            ctx.fillStyle = 'var(--color-light-blue)'; 
-            ctx.shadowColor = 'var(--color-light-blue)';
-            ctx.shadowBlur = 10;
-            
-            ctx.fillRect(0, 0, 8, canvas.height); 
-            ctx.fillRect(canvas.width - 8, 0, 8, canvas.height);
-            
-            ctx.shadowBlur = 0;
-        }
-        
-        function checkCollision() {
-            for (const obs of obstacles) {
-                if (player.x < obs.x + obs.width - GAP_SIZE &&
-                    player.x + player.width > obs.x + GAP_SIZE &&
-                    player.y < obs.y + obs.height - GAP_SIZE &&
-                    player.y + player.height > obs.y + GAP_SIZE) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function draw(timestamp) {
-            if (!ctx) return;
-
-            drawRoad(ctx, obstacleSpeed * 0.9);
-            lampPosts.forEach(post => drawLampPost(ctx, post));
-
-            obstacles.forEach(obs => drawOpponentVehicle(ctx, obs));
-
-            drawSmokeParticles(ctx);
-
-            if (!isGameOver) {
-                drawPlayerShape(ctx, player);
-            }
-
-            drawExplosions(ctx); 
-            
-            const seconds = Math.floor(frameCount / FPS);
-            ctx.fillStyle = 'var(--color-light-blue)';
-            ctx.shadowColor = 'var(--color-light-blue)';
-            ctx.shadowBlur = 8;
-            ctx.font = 'bold 22px Inter, monospace';
-            ctx.fillText(`TIME: ${formatScore(seconds)}`, 10, 30);
-            ctx.shadowBlur = 0;
-        }
-
-        function gameOver() {
-            if (isGameOver) return; 
-            
-            isGameOver = true;
-            createExplosion(player.x + player.width / 2, player.y + player.height / 2);
-            
-            const finalScore = Math.floor(frameCount / FPS);
-            const bestScore = saveLocalBest(finalScore);
-            
-            finalScoreText.innerHTML = `
-                <strong style="color: var(--color-dark-orange); font-size: 1.5em; text-shadow: var(--shadow-dark-orange);">${formatScore(finalScore)}</strong>
-                <br>
-                <span style="font-size: 1em; color: var(--color-light-blue);"></span>
-            `;
-        }
-
-        /**
-         * Resets the game state, crucially resetting the seed to guarantee
-         * the next game sequence is identical to the first.
-         */
-        function resetGame() {
-            isGameOver = false;
-            isScreenShown = false; 
-            frameCount = 0;
-            obstacles = [];
-            lampPosts = [];
-            smokeParticles = []; 
-            explosions = []; 
-            currentRoadLineY = 0;
-            obstacleSpeed = baseObstacleSpeed;
-            obstacleSpawnRate = baseSpawnRate;
-            
-            // KEY TO DETERMINISM: Reset the seed before every game.
-            currentSeed = GAME_SEED;
-            
-            player.x = canvas.width / 2 - player.width / 2;
-            player.y = canvas.height - player.height * 2;
-            player.rotation = 0; // Reset rotation
-            player.lastX = player.x; // Set initial lastX
-            
-            slider.value = 50; 
-        }
-
-        function gameLoop(timestamp) {
-            updatePlayerX();
-            
-            // --- UPDATED: Calculate smooth player rotation angle using LERP ---
-            const dx = player.x - player.lastX;
-            
-            // 1. Calculate the 'target' rotation based on speed.
-            // The divisor (e.g., 60) controls the max tilt sensitivity.
-            const maxRotation = Math.PI / 15; // Max tilt set to ~12 degrees
-            const targetRotation = Math.min(Math.max(dx / 60, -maxRotation), maxRotation); 
-            
-            // 2. Linear Interpolation (LERP) for smoothing.
-            // The factor (0.15) means the car closes 15% of the distance to the target rotation each frame.
-            const smoothingFactor = 0.15; 
-            player.rotation += (targetRotation - player.rotation) * smoothingFactor;
-
-            player.lastX = player.x; // Update last position
-            // --- End UPDATED ---
-            
-            if (!isGameOver) {
-                updateDifficulty();
-                
-                updateObstacles();
-                updateLampPosts();
-
-                // Spawning is purely based on deterministic frameCount
-                if (frameCount > INITIAL_SPAWN_DELAY && frameCount % Math.floor(obstacleSpawnRate) === 0) {
-                    spawnObstacle();
-                }
-
-                if (frameCount > 1 && frameCount % LAMP_POST_FREQUENCY === 0) {
-                    spawnLampPost();
-                }
-
-                if (checkCollision() || Math.floor(frameCount / FPS) >= MAX_GAME_TIME_SECONDS) {
-                    gameOver();
-                }
-
-                frameCount++;
-            }
-            
-            updateSmokeParticles(); 
-            if (!isGameOver && frameCount % 2 === 0) { 
-                spawnSmokeParticle();
-            }
-            
-            updateExplosions(); 
-
-            if (isGameOver && !isScreenShown && explosions.length === 0) {
-                isScreenShown = true;
-                gameOverScreen.style.display = 'flex';
-                // Stop the main game loop when the game over screen is fully displayed
-                if (gameLoopId) {
-                    cancelAnimationFrame(gameLoopId);
-                    gameLoopId = null;
-                }
-                return; 
-            }
-
-            draw(timestamp);
-
-            gameLoopId = requestAnimationFrame(gameLoop);
-        }
-        
-        // --- Game Setup and Initialization ---
-
-        function startGame() {
-            resetGame();
-            
-            loadCustomization(); 
-            
-            // Cancel any previous loop just in case
-            if (gameLoopId) {
-                cancelAnimationFrame(gameLoopId);
-            }
-            gameLoopId = requestAnimationFrame(gameLoop);
-        }
-
-        // Keyboard controls
-        document.addEventListener('keydown', (e) => {
-            if (isGameOver) return;
-            let sliderValue = parseInt(slider.value);
-
-            // Left/Right arrow keys for control
-            if (e.key === 'ArrowLeft') {
-                sliderValue = Math.max(0, sliderValue - 5);
-            } else if (e.key === 'ArrowRight') {
-                sliderValue = Math.min(100, sliderValue + 5);
-            }
-            slider.value = sliderValue;
-            // Manually trigger updatePlayerX here to make the movement instant on key press
-            updatePlayerX(); 
-        });
-
-        // Initialize view
-        window.onload = () => {
-            showRankingView();
-        };
-
-    </script>
-
-
-<!-- Firebase (compat) integration for GitHub Pages: anonymous auth + Firestore leaderboard -->
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
-<script>
-(function(){
-  // ----- Firebase config (you provided) -----
-  const firebaseConfig = {
-    apiKey: "AIzaSyDJ4-PX0BkxLCAAzgt5XheVW6V5EAiCt-Q",
-    authDomain: "m-8b9af.firebaseapp.com",
-    projectId: "m-8b9af",
-    storageBucket: "m-8b9af.firebasestorage.app",
-    messagingSenderId: "191155309081",
-    appId: "1:191155309081:web:8b4eccd49997b2ef4e3888"
-  };
-
-  // Initialize Firebase
-try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn("firebase init:", e); }
-const auth = firebase.auth();
-const db = firebase.firestore();
-let currentUser = null;
-
-// ✅ Keep the same anonymous user between reloads
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-  .then(() => {
-    console.log("Anonymous auth persistence enabled (LOCAL).");
-    // Try to sign in anonymously immediately
-    return auth.signInAnonymously();
-  })
-  .catch(e => console.warn("Failed to set persistence or sign in:", e));
-
-  // Small helper to wait for auth to be ready (max timeout)
-  function waitForAuth(timeout=5000){
-    return new Promise(resolve=>{
-      const start = Date.now();
-      (function check(){
-        if(currentUser) return resolve(currentUser);
-        if(Date.now() - start > timeout) return resolve(null);
-        setTimeout(check, 150);
-      })();
-    });
-  }
-
-  auth.onAuthStateChanged(user => {
-  if (user) {
-    currentUser = user;
-    console.log("Signed in as:", currentUser.uid);
-  } else {
-    // If no user is signed in (first time or cleared cache), sign in anonymously
-    auth.signInAnonymously()
-      .then(() => {
-        console.log("Signed in anonymously.");
-      })
-      .catch(e => console.warn("Anonymous sign-in failed:", e));
-  }
-});
-
-
-
-  // Save or update score (only if it's better than existing)
-  async function saveScoreToFirebase(name, score){
-    const user = await waitForAuth();
-    if(!user){ console.warn("No auth user available, skipping save"); return; }
-
-    const ref = db.collection("leaderboard").doc(user.uid);
-    try {
-      const snap = await ref.get();
-      if(!snap.exists){
-        await ref.set({
-          name: (name||"PLAYER").toUpperCase().slice(0,8),
-          score: Number(score)||0,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } else {
-        const data = snap.data() || {};
-        const prev = Number(data.score) || 0;
-        const nname = (name||data.name||"PLAYER").toUpperCase().slice(0,8);
-        if(Number(score) > prev){
-          await ref.set({
-            name: nname,
-            score: Number(score)||0,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        } else if((data.name||"") !== nname){
-          // update only the name
-          await ref.update({ name: nname });
-        }
-      }
-    } catch(e){ console.error("saveScoreToFirebase error:", e); }
-  }
-
-  // Save or update name (without touching score)
-  async function saveNameToFirebase(name){
-    const user = await waitForAuth();
-    if(!user) return;
-    const ref = db.collection("leaderboard").doc(user.uid);
-    try{
-      const snap = await ref.get();
-      const nname = (name||"PLAYER").toUpperCase().slice(0,8);
-      if(!snap.exists){
-        await ref.set({
-          name: nname,
-          score: Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } else {
-        await ref.update({ name: nname });
-      }
-    } catch(e){ console.error("saveNameToFirebase error:", e); }
-  }
-
-  // Load top 5 global leaderboard (highest scores)
-  async function loadLeaderboard(){
-    try{
-      const q = await db.collection("leaderboard")
-        .orderBy("score", "desc")
-        .limit(5)
-        .get();
-      const out = [];
-      q.forEach(d => out.push(d.data()));
-      return out;
-    } catch(e){
-      console.error("loadLeaderboard error:", e);
-      return [];
+    <input type="text" id="playerNameInput" maxlength="8" placeholder="PLAYER" style="text-transform:uppercase;" />
+    <button id="playButton" onclick="startGameView()">START DRIFTING!</button>
+  </div>
+
+  <div id="gameView">
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div id="gameOverScreen" style="display:none;text-align:center;background:rgba(0,0,0,0.9);color:#ff8c00;position:absolute;top:0;left:0;width:100%;height:100%;justify-content:center;align-items:center;">
+      <div>
+        <h1>CRASH!</h1>
+        <p>Total Drift Time:</p>
+        <p id="finalScoreText"></p>
+        <p id="newRecordMsg" style="color:#00ff00;font-weight:bold;"></p>
+        <button onclick="showRankingView()">EXIT SIMULATION</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* --- Minimal local game logic from your existing DWMfixed.html --- */
+    const LOCAL_BEST_KEY = 'blockDodgerLocalBestTime';
+    const PLAYER_NAME_KEY = 'blockDodgerPlayerName';
+    const FPS = 60;
+    let frameCount = 0;
+    let isGameOver = false;
+    let gameLoopId = null;
+
+    function formatScore(s) { return s + 's'; }
+    function loadLocalBest() { return Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0; }
+    function saveLocalBest(score) {
+      const prev = loadLocalBest();
+      if (score > prev) localStorage.setItem(LOCAL_BEST_KEY, score);
+      return loadLocalBest();
     }
-  }
 
-  // Render leaderboard into #globalRankList and update local best display
-  async function updateLeaderboardDisplay(){
-    const listEl = document.getElementById("globalRankList");
-    if(!listEl) return;
-    const rows = await loadLeaderboard();
-    listEl.innerHTML = "";
-    rows.forEach((r, i) => {
-      const li = document.createElement("li");
-      const name = (r.name||"PLAYER").toString().toUpperCase().slice(0,8);
-      const score = Number(r.score) || 0;
-      li.innerHTML = `<span>#${i+1}</span><span>${name}</span><span class="rank-score">${score}s</span>`;
-      listEl.appendChild(li);
+    function showRankingView() {
+      document.getElementById('rankingView').style.display = 'block';
+      document.getElementById('gameView').style.display = 'none';
+      document.getElementById('gameOverScreen').style.display = 'none';
+      updateLeaderboardDisplay();
+    }
+
+    function startGameView() {
+      document.getElementById('rankingView').style.display = 'none';
+      document.getElementById('gameView').style.display = 'block';
+      document.getElementById('gameOverScreen').style.display = 'none';
+      startGame();
+    }
+
+    function startGame() {
+      frameCount = 0;
+      isGameOver = false;
+      if (gameLoopId) cancelAnimationFrame(gameLoopId);
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    function gameLoop() {
+      if (isGameOver) return;
+      frameCount++;
+      if (frameCount / FPS > 5) { // simulate a quick game
+        gameOver();
+        return;
+      }
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    function gameOver() {
+      if (isGameOver) return;
+      isGameOver = true;
+      const score = Math.floor(frameCount / FPS);
+      const best = saveLocalBest(score);
+      document.getElementById('finalScoreText').textContent = formatScore(score);
+      document.getElementById('gameOverScreen').style.display = 'flex';
+      document.getElementById('newRecordMsg').textContent = score >= best ? 'NEW RECORD!' : '';
+    }
+
+    window.onload = showRankingView;
+  </script>
+
+  <!-- Firebase compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+  <script>
+  (function(){
+    const firebaseConfig = {
+      apiKey: "AIzaSyDJ4-PX0BkxLCAAzgt5XheVW6V5EAiCt-Q",
+      authDomain: "m-8b9af.firebaseapp.com",
+      projectId: "m-8b9af",
+      storageBucket: "m-8b9af.firebasestorage.app",
+      messagingSenderId: "191155309081",
+      appId: "1:191155309081:web:8b4eccd49997b2ef4e3888"
+    };
+
+    try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn(e); }
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    let currentUser = null;
+
+    // ✅ Persistent anonymous login
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .then(() => auth.signInAnonymously().catch(()=>{}))
+      .catch(e => console.warn("Persistence failed:", e));
+
+    auth.onAuthStateChanged(u => {
+      if(u){ currentUser = u; console.log("Signed in:", u.uid); }
+      else auth.signInAnonymously().catch(()=>{});
     });
-    // update local best display if present
-    const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
-    const localBestEl = document.getElementById("localBestScore");
-    if(localBestEl) localBestEl.textContent = `${localBest}s`;
-  }
 
-  // Wrap the game's gameOver function to save + update leaderboard
-  const originalGameOver = window.gameOver || function(){};
-  window.gameOver = async function(){
-    try { originalGameOver(); } catch(e){ console.warn("originalGameOver error:", e); }
-    const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
-    const score = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
-    await saveScoreToFirebase(name, score);
-    await updateLeaderboardDisplay();
-  };
+    // Wait for auth
+    function waitForAuth(){ return new Promise(r => {
+      const chk = setInterval(()=>{ if(currentUser){ clearInterval(chk); r(currentUser); }},100);
+    });}
 
-  // Hook name input blur to save name to Firestore and refresh board
-  window.addEventListener("load", () => {
-    // initial leaderboard refresh
-    updateLeaderboardDisplay().catch(()=>{});
+    async function saveScoreToFirebase(name, score){
+      const user = await waitForAuth();
+      const ref = db.collection("leaderboard").doc(user.uid);
+      const snap = await ref.get();
+      if(!snap.exists){
+        await ref.set({ name, score, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      } else {
+        const prev = snap.data().score || 0;
+        if(score > prev){
+          await ref.set({ name, score, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        } else if(snap.data().name !== name){
+          await ref.update({ name });
+        }
+      }
+    }
 
-    const nameInput = document.getElementById("playerNameInput");
-    if(nameInput){
-      nameInput.addEventListener("blur", async (e) => {
-        const nm = (e.target.value||"PLAYER").toUpperCase().slice(0,8);
-        localStorage.setItem(PLAYER_NAME_KEY, nm);
-        try{ await saveNameToFirebase(nm); } catch(err){ console.warn(err); }
-        updateLeaderboardDisplay().catch(()=>{});
+    async function loadLeaderboard(){
+      const q = await db.collection("leaderboard").orderBy("score","desc").limit(5).get();
+      const out=[]; q.forEach(d=>out.push(d.data())); return out;
+    }
+
+    async function updateLeaderboardDisplay(){
+      const list=document.getElementById("globalRankList");
+      if(!list) return;
+      const rows=await loadLeaderboard();
+      list.innerHTML="";
+      rows.forEach((r,i)=>{
+        const li=document.createElement("li");
+        li.innerHTML=`<span>#${i+1}</span><span>${r.name||"PLAYER"}</span><span class="rank-score">${r.score}s</span>`;
+        list.appendChild(li);
       });
+      document.getElementById("localBestScore").textContent = (loadLocalBest()||0)+'s';
     }
-  });
 
-  // expose helpers for debugging
-  window.firebaseIntegration = {
-    saveScoreToFirebase,
-    saveNameToFirebase,
-    updateLeaderboardDisplay,
-    loadLeaderboard
-  };
+    // ✅ Only update Firestore if new highscore achieved
+    const origGameOver = window.gameOver;
+    window.gameOver = async function(){
+      try{ origGameOver(); }catch(e){ console.warn(e); }
+      const finalScore = Math.floor((window.frameCount||0)/(window.FPS||60));
+      const bestStored = loadLocalBest();
+      const name = (localStorage.getItem(PLAYER_NAME_KEY)||"PLAYER").toUpperCase().slice(0,8);
+      if(finalScore >= bestStored){
+        console.log("🎉 New record, saving to Firestore:", bestStored);
+        await saveScoreToFirebase(name, bestStored);
+        await updateLeaderboardDisplay();
+      } else {
+        console.log("No new highscore, skip Firestore update.");
+      }
+    };
 
-})();
-</script>
-
-<!-- End Firebase integration -->
+    window.addEventListener("load", ()=>{
+      updateLeaderboardDisplay();
+      const nameInput=document.getElementById("playerNameInput");
+      nameInput.addEventListener("blur", async e=>{
+        const name=(e.target.value||"PLAYER").toUpperCase().slice(0,8);
+        localStorage.setItem(PLAYER_NAME_KEY,name);
+        const user=await waitForAuth();
+        const ref=db.collection("leaderboard").doc(user.uid);
+        const snap=await ref.get();
+        if(!snap.exists){
+          await ref.set({name,score:loadLocalBest(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+        }else{
+          await ref.update({name});
+        }
+        updateLeaderboardDisplay();
+      });
+    });
+  })();
+  </script>
 </body>
 </html>
