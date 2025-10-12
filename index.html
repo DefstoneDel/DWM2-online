@@ -3,6 +3,7 @@
 <head>
   <link rel=\"icon\" href=\"data:,\">
   <link rel=\"icon\" href=\"data:,\">
+  <link rel=\"icon\" href=\"data:,\">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drift with Myth 2</title>
@@ -740,15 +741,15 @@
 
         function savePlayerName(name) {
             if (name) {
-                localStorage.setItem(PLAYER_NAME_KEY, name.toUpperCase().trim().slice(0, 8));
+                localStorage.setItem(PLAYER_NAME_KEY, name.toUpperCase().trim().slice(0, 8);
             }
         }
 
-        async function displayWorldRanking() {
+        async async function displayWorldRanking() {
             const localBest = loadLocalBest();
             const playerName = loadPlayerName(); 
             
-            const filteredScores = await window.firebaseIntegration.loadLeaderboard().filter(item => item.name !== "YOU");
+            const filteredScores = if(window.firebaseIntegration && window.firebaseIntegration.loadLeaderboard){ const scores = await window.firebaseIntegration.loadLeaderboard().filter(item => item.name !== "YOU");
             const allScores = [...filteredScores];
 
             allScores.push({ name: playerName, score: localBest });
@@ -980,7 +981,7 @@
         function spawnObstacle() {
             // All parameters determining the obstacle use seededRandom() or fixed constants.
             const obstacleWidth = 30 + seededRandom() * 20;
-            const laneCount = Math.floor(canvas.width / (obstacleWidth + 10)); 
+            const laneCount = Math.floor(canvas.width / (obstacleWidth + 10); 
             const laneIndex = Math.floor(seededRandom() * laneCount);
             const x = laneIndex * (obstacleWidth + 10) + 5 + (obstacleWidth / 2 - 20); 
             
@@ -1093,9 +1094,9 @@
             if (!ctx) return;
 
             drawRoad(ctx, obstacleSpeed * 0.9);
-            lampPosts.forEach(post => drawLampPost(ctx, post));
+            lampPosts.forEach(post => drawLampPost(ctx, post);
 
-            obstacles.forEach(obs => drawOpponentVehicle(ctx, obs));
+            obstacles.forEach(obs => drawOpponentVehicle(ctx, obs);
 
             drawSmokeParticles(ctx);
 
@@ -1288,7 +1289,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     // Try to sign in anonymously immediately
     return auth.signInAnonymously();
   })
-  .catch(e => console.warn("Failed to set persistence or sign in:", e));
+  .catch(e => console.warn("Failed to set persistence or sign in:", e);
 
   // Small helper to wait for auth to be ready (max timeout)
   function waitForAuth(timeout=5000){
@@ -1312,7 +1313,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
       .then(() => {
         console.log("Signed in anonymously.");
       })
-      .catch(e => console.warn("Anonymous sign-in failed:", e));
+      .catch(e => console.warn("Anonymous sign-in failed:", e);
   }
 });
 
@@ -1378,7 +1379,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
         .limit(5)
         .get();
       const out = [];
-      q.forEach(d => out.push(d.data()));
+      q.forEach(d => out.push(d.data());
       return out;
     } catch(e){
       console.error("loadLeaderboard error:", e);
@@ -1390,7 +1391,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   async function updateLeaderboardDisplay(){
     const listEl = document.getElementById("globalRankList");
     if(!listEl) return;
-    const rows = await window.firebaseIntegration.loadLeaderboard();
+    const rows = if(window.firebaseIntegration && window.firebaseIntegration.loadLeaderboard){ const scores = await window.firebaseIntegration.loadLeaderboard();
     listEl.innerHTML = "";
     rows.forEach((r, i) => {
       const li = document.createElement("li");
@@ -1454,6 +1455,7 @@ window.firebaseIntegration = {
   saveScoreToFirebase,
   saveNameToFirebase,
   updateLeaderboardDisplay,
+  loadLeaderboard,
   loadLeaderboard
 };
 
