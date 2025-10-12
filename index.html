@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel=\"icon\" href=\"data:,\">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drift with Myth 2</title>
@@ -746,7 +747,7 @@
             const localBest = loadLocalBest();
             const playerName = loadPlayerName(); 
             
-            const filteredScores = MOCK_WORLD_SCORES.filter(item => item.name !== "YOU");
+            const filteredScores = await loadLeaderboard().filter(item => item.name !== "YOU");
             const allScores = [...filteredScores];
 
             allScores.push({ name: playerName, score: localBest });
