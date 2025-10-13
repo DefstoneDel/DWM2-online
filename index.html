@@ -1414,13 +1414,28 @@ window.gameOver = async function(){
   const finalScore = match ? Number(match[1]) : 0;
 
   // Compare with local best (updated inside originalGameOver)
-  const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
-  const scoreToUpload = Math.max(finalScore, localBest);
+const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+const scoreToUpload = Math.max(finalScore, localBest);
+const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
 
-  const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
-  await saveScoreToFirebase(name, scoreToUpload);
-  await updateLeaderboardDisplay();
+const user = await waitForAuth();
+if (user) {
+  const ref = db.collection("leaderboard").doc(user.uid);
+  const snap = await ref.get();
+  const currentRemote = snap.exists ? (Number(snap.data().score) || 0) : 0;
+
+  // ✅ Only upload if this score is higher than the one in Firebase
+  if (scoreToUpload > currentRemote) {
+    await saveScoreToFirebase(name, scoreToUpload);
+    console.log("Uploaded new highscore:", scoreToUpload);
+  } else {
+    console.log("Skipped upload — score unchanged:", scoreToUpload);
+  }
+}
+
+await updateLeaderboardDisplay();
 };
+
 
 
   // Hook name input blur to save name to Firestore and refresh board
