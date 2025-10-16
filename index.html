@@ -746,7 +746,7 @@
             const localBest = loadLocalBest();
             const playerName = loadPlayerName(); 
             
-            const filteredScores = MOCK_WORLD_SCORES.filter(item => item.name !== "YOU");
+            const filteredScores = MOCK_WORLD_SCORES ? MOCK_WORLD_SCORES.filter(item => item.name !== "YOU") : [];
             const allScores = [...filteredScores];
 
             allScores.push({ name: playerName, score: localBest });
@@ -1273,8 +1273,10 @@
     appId: "1:191155309081:web:8b4eccd49997b2ef4e3888"
   };
 
-  // Initialize Firebase
+  // Initialize Firebase (compat)
   try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn("firebase init:", e); }
+
+  // single auth/db variables
   const auth = firebase.auth();
   const db = firebase.firestore();
   let currentUser = null;
@@ -1291,30 +1293,44 @@
     });
   }
 
- 
+  // Helper that returns a Promise which resolves when a user is available (or rejects on timeout)
+  function waitForUserReady(maxWait = 5000) {
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const check = () => {
+        if (currentUser) return resolve(currentUser);
+        if (Date.now() - start > maxWait) return reject(new Error("Timeout waiting for auth"));
+        setTimeout(check, 100);
+      };
+      check();
+    });
+  }
 
-   const auth = firebase.auth();
-  const db = firebase.firestore();
-  let currentUser = null;
-
-  // --- Persist the anonymous Firebase user between sessions ---
+  // --- Persist the anonymous Firebase user between sessions and set up onAuth observer ---
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     .then(() => {
-      // Watch for auth changes and only sign in if no existing user
+      // Attach onAuthStateChanged listener
       auth.onAuthStateChanged(user => {
         if (user) {
           currentUser = user;
+          // After we get the user for the first time, initialize leaderboard UI & name hook
+          postAuthInit();
         } else {
-          auth.signInAnonymously()
-              .catch(e => console.warn("anon sign-in failed:", e));
+          // No user yet — sign in anonymously
+          auth.signInAnonymously().catch(e => console.warn("anon sign-in failed:", e));
         }
       });
 
-      // Optional: if user already exists, set currentUser immediately
-      if (auth.currentUser) currentUser = auth.currentUser;
+      // If auth restored immediately (rare), use it
+      if (auth.currentUser) {
+        currentUser = auth.currentUser;
+        postAuthInit();
+      }
     })
     .catch(e => console.warn("auth persistence setup failed:", e));
 
+
+  // ---- Firestore helpers (all will wait for user when needed) ----
 
   // Save or update score (only if it's better than existing)
   async function saveScoreToFirebase(name, score){
@@ -1386,21 +1402,69 @@
 
   // Render leaderboard into #globalRankList and update local best display
   async function updateLeaderboardDisplay(){
+    // Ensure DOM element exists
     const listEl = document.getElementById("globalRankList");
     if(!listEl) return;
-    const rows = await loadLeaderboard();
+
+    // Wait for user (so currentUser.uid will be available for highlighting)
+    await waitForUserReady().catch(()=>null);
+
+    let rows = [];
+    try {
+      rows = await loadLeaderboard();
+    } catch(e){
+      console.warn("Could not load leaderboard", e);
+    }
+
     listEl.innerHTML = "";
-    rows.forEach((r, i) => {
-      const li = document.createElement("li");
-      const name = (r.name||"PLAYER").toString().toUpperCase().slice(0,8);
-      const score = Number(r.score) || 0;
-      li.innerHTML = `<span>#${i+1}</span><span>${name}</span><span class="rank-score">${score}s</span>`;
-      listEl.appendChild(li);
-    });
+    if(rows.length === 0){
+      // fallback: show some static placeholder (but still show local best)
+      listEl.innerHTML = "<li style='opacity:.6'>No global scores yet</li>";
+    } else {
+      rows.forEach((r, i) => {
+        const li = document.createElement("li");
+        const name = (r.name||"PLAYER").toString().toUpperCase().slice(0,8);
+        const score = Number(r.score) || 0;
+        const isPlayer = currentUser && (r.__uid === currentUser.uid || r.uid === currentUser.uid || false);
+        // We don't have uid in r unless we added it; highlight by name+score if matches local
+        const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+        const highlight = (name === (localStorage.getItem(PLAYER_NAME_KEY)||"PLAYER").toUpperCase().slice(0,8) && score === localBest);
+        li.className = highlight ? 'rank-highlight' : '';
+        li.innerHTML = `<span>#${i+1}</span><span>${name}</span><span class="rank-score">${score}s</span>`;
+        listEl.appendChild(li);
+      });
+    }
+
     // update local best display if present
     const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
     const localBestEl = document.getElementById("localBestScore");
     if(localBestEl) localBestEl.textContent = `${localBest}s`;
+  }
+
+  // Called once auth is available (first time)
+  let _postAuthInitialized = false;
+  function postAuthInit(){
+    if(_postAuthInitialized) return;
+    _postAuthInitialized = true;
+
+    // Hook name input blur to save name to Firestore and refresh board
+    window.addEventListener("load", () => {
+      // initial leaderboard refresh
+      updateLeaderboardDisplay().catch(()=>{});
+
+      const nameInput = document.getElementById("playerNameInput");
+      if(nameInput){
+        nameInput.addEventListener("blur", async (e) => {
+          const nm = (e.target.value||"PLAYER").toUpperCase().slice(0,8);
+          localStorage.setItem(PLAYER_NAME_KEY, nm);
+          try{ await saveNameToFirebase(nm); } catch(err){ console.warn(err); }
+          updateLeaderboardDisplay().catch(()=>{});
+        });
+      }
+    });
+
+    // Also refresh board immediately (if DOM available)
+    setTimeout(()=>{ updateLeaderboardDisplay().catch(()=>{}); }, 200);
   }
 
   // Wrap the game's gameOver function to save + update leaderboard
@@ -1413,28 +1477,13 @@
     await updateLeaderboardDisplay();
   };
 
-  // Hook name input blur to save name to Firestore and refresh board
-  window.addEventListener("load", () => {
-    // initial leaderboard refresh
-    updateLeaderboardDisplay().catch(()=>{});
-
-    const nameInput = document.getElementById("playerNameInput");
-    if(nameInput){
-      nameInput.addEventListener("blur", async (e) => {
-        const nm = (e.target.value||"PLAYER").toUpperCase().slice(0,8);
-        localStorage.setItem(PLAYER_NAME_KEY, nm);
-        try{ await saveNameToFirebase(nm); } catch(err){ console.warn(err); }
-        updateLeaderboardDisplay().catch(()=>{});
-      });
-    }
-  });
-
   // expose helpers for debugging
   window.firebaseIntegration = {
     saveScoreToFirebase,
     saveNameToFirebase,
     updateLeaderboardDisplay,
-    loadLeaderboard
+    loadLeaderboard,
+    waitForAuth
   };
 
 })();
