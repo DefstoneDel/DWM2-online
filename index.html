@@ -1265,7 +1265,7 @@
 (function(){
   // ----- Firebase config (you provided) -----
   const firebaseConfig = {
-    apiKey: "AIzaSyDJ4-PX0BkxLCAAzgt5XheVW6V5EAiCt-Q",
+    apiKey: "AIzaSyDqEKzf3AIAinbnfEU-3CpScNBaB4w5j8o",
     authDomain: "m-8b9af.firebaseapp.com",
     projectId: "m-8b9af",
     storageBucket: "m-8b9af.firebasestorage.app",
@@ -1274,19 +1274,10 @@
   };
 
   // Initialize Firebase
-try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn("firebase init:", e); }
-const auth = firebase.auth();
-const db = firebase.firestore();
-let currentUser = null;
-
-// ✅ Keep the same anonymous user between reloads
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-  .then(() => {
-    console.log("Anonymous auth persistence enabled (LOCAL).");
-    // Try to sign in anonymously immediately
-    return auth.signInAnonymously();
-  })
-  .catch(e => console.warn("Failed to set persistence or sign in:", e));
+  try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn("firebase init:", e); }
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  let currentUser = null;
 
   // Small helper to wait for auth to be ready (max timeout)
   function waitForAuth(timeout=5000){
@@ -1300,20 +1291,29 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     });
   }
 
-  auth.onAuthStateChanged(user => {
-  if (user) {
-    currentUser = user;
-    console.log("Signed in as:", currentUser.uid);
-  } else {
-    // If no user is signed in (first time or cleared cache), sign in anonymously
-    auth.signInAnonymously()
-      .then(() => {
-        console.log("Signed in anonymously.");
-      })
-      .catch(e => console.warn("Anonymous sign-in failed:", e));
-  }
-});
+ 
 
+   const auth = firebase.auth();
+  const db = firebase.firestore();
+  let currentUser = null;
+
+  // --- Persist the anonymous Firebase user between sessions ---
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .then(() => {
+      // Watch for auth changes and only sign in if no existing user
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          currentUser = user;
+        } else {
+          auth.signInAnonymously()
+              .catch(e => console.warn("anon sign-in failed:", e));
+        }
+      });
+
+      // Optional: if user already exists, set currentUser immediately
+      if (auth.currentUser) currentUser = auth.currentUser;
+    })
+    .catch(e => console.warn("auth persistence setup failed:", e));
 
 
   // Save or update score (only if it's better than existing)
@@ -1388,90 +1388,30 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   async function updateLeaderboardDisplay(){
     const listEl = document.getElementById("globalRankList");
     if(!listEl) return;
-    try{
-      const rows = await loadLeaderboard();
-      listEl.innerHTML = "";
-      rows.forEach((r, i) => {
-        const li = document.createElement("li");
-        const name = (r.name||"PLAYER").toString().toUpperCase().slice(0,8);
-        const score = Number(r.score) || 0;
-        li.innerHTML = `<span>#${i+1}</span><span>${name}</span><span class="rank-score">${score}s</span>`;
-        listEl.appendChild(li);
-      });
-    } catch(e){
-      console.error("Failed to load leaderboard rows:", e);
-      listEl.innerHTML = "<li>Failed to load leaderboard</li>";
-    }
-
-    // Now load the current user's score from Firestore (if authenticated) and display that as YOUR BEST TIME.
-    try {
-      const user = await waitForAuth();
-      let remoteScore = null;
-      if (user) {
-        const ref = db.collection("leaderboard").doc(user.uid);
-        const snap = await ref.get();
-        if (snap.exists) {
-          remoteScore = Number(snap.data().score) || 0;
-          // Sync local storage so in-game logic that sometimes reads localStorage stays consistent
-          localStorage.setItem(LOCAL_BEST_KEY, String(remoteScore));
-        }
-      }
-      // If we have a remote score, show it; otherwise fall back to localStorage (or 0)
-      const displayScore = remoteScore !== null ? remoteScore : (Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0);
-      const localBestEl = document.getElementById("localBestScore");
-      if(localBestEl) localBestEl.textContent = `${displayScore}s`;
-    } catch(err){
-      console.error("Failed to fetch user's remote score:", err);
-      const localBestEl = document.getElementById("localBestScore");
-      const fallback = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
-      if(localBestEl) localBestEl.textContent = `${fallback}s`;
-    }
+    const rows = await loadLeaderboard();
+    listEl.innerHTML = "";
+    rows.forEach((r, i) => {
+      const li = document.createElement("li");
+      const name = (r.name||"PLAYER").toString().toUpperCase().slice(0,8);
+      const score = Number(r.score) || 0;
+      li.innerHTML = `<span>#${i+1}</span><span>${name}</span><span class="rank-score">${score}s</span>`;
+      listEl.appendChild(li);
+    });
+    // update local best display if present
+    const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+    const localBestEl = document.getElementById("localBestScore");
+    if(localBestEl) localBestEl.textContent = `${localBest}s`;
   }
 
   // Wrap the game's gameOver function to save + update leaderboard
-const originalGameOver = window.gameOver || function(){};
-window.gameOver = async function(){
-  try { originalGameOver(); } catch(e){ console.warn("originalGameOver error:", e); }
-
-  // Try to read the most recent in-game score
-  const scoreText = document.getElementById("finalScoreText")?.innerText || "";
-  const match = scoreText.match(/(\d+)/);
-  const finalScore = match ? Number(match[1]) : 0;
-
-  // Compare with local best (updated inside originalGameOver)
-  const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
-  const scoreToUpload = Math.max(finalScore, localBest);
-  const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
-
-  try {
-    const user = await waitForAuth();
-    if (user) {
-      const ref = db.collection("leaderboard").doc(user.uid);
-      const snap = await ref.get();
-      const currentRemote = snap.exists ? (Number(snap.data().score) || 0) : 0;
-
-      // Only upload if this score is higher than the one in Firebase
-      if (scoreToUpload > currentRemote) {
-        await saveScoreToFirebase(name, scoreToUpload);
-        console.log("Uploaded new highscore:", scoreToUpload);
-      } else {
-        console.log("Skipped upload — score unchanged (remote):", currentRemote, "local:", scoreToUpload);
-        // If remote exists and is authoritative, sync localStorage to it
-        if (snap.exists && snap.data().score !== undefined) {
-          localStorage.setItem(LOCAL_BEST_KEY, String(Number(snap.data().score) || 0));
-        }
-      }
-    } else {
-      console.warn("No authenticated user; skipping firebase upload.");
-    }
-  } catch (err) {
-    console.error("Error while checking/uploading score:", err);
-  }
-
-  // Refresh the board display (this function will also sync the local "YOUR BEST TIME" to Firebase value if present)
-  await updateLeaderboardDisplay();
-};
-
+  const originalGameOver = window.gameOver || function(){};
+  window.gameOver = async function(){
+    try { originalGameOver(); } catch(e){ console.warn("originalGameOver error:", e); }
+    const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
+    const score = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+    await saveScoreToFirebase(name, score);
+    await updateLeaderboardDisplay();
+  };
 
   // Hook name input blur to save name to Firestore and refresh board
   window.addEventListener("load", () => {
