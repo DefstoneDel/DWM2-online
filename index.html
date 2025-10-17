@@ -1311,6 +1311,15 @@
       const unsubscribe = auth.onAuthStateChanged(user => {
         if(user){
           currentUser = user;
+    // --- FIX: Reset local cache when a new Firebase user is detected ---
+    const storedUID = localStorage.getItem('lastFirebaseUID');
+    if (storedUID !== user.uid) {
+      console.log("New Firebase user detected, resetting local cache");
+      localStorage.removeItem('blockDodgerLocalBestTime');
+      localStorage.removeItem('blockDodgerPlayerName');
+      localStorage.setItem('lastFirebaseUID', user.uid);
+    }
+
           console.log("Firebase auth restored/signed-in:", user.uid);
           postAuthInit();
         }
