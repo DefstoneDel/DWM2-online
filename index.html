@@ -1254,8 +1254,15 @@
 
         // Initialize view
         window.onload = () => {
-            showRankingView();
-        };
+  showRankingView();
+  // Show cached leaderboard instantly even before Firebase finishes restoring
+  if (window.firebaseIntegration && typeof window.firebaseIntegration.updateLeaderboardDisplay === 'function') {
+    try { window.firebaseIntegration.updateLeaderboardDisplay(false); } catch(e){}
+  } else {
+    try { updateLeaderboardDisplay(false); } catch(e){}
+  }
+};
+
 
     </script>
 
@@ -1417,44 +1424,70 @@
     }
   }
 
-  // Update UI: #globalRankList and #localBestScore
-  async function updateLeaderboardDisplay(){
-    const listEl = document.getElementById("globalRankList");
-    const localBestEl = document.getElementById("localBestScore");
-    if(!listEl || !localBestEl) return;
+  // === Overridden updateLeaderboardDisplay: cached-first, then Firebase refresh ===
+async function updateLeaderboardDisplay(fromFirebase = true) {
+  const listEl = document.getElementById("globalRankList");
+  const localBestEl = document.getElementById("localBestScore");
+  if (!listEl || !localBestEl) return;
 
-    // show a quick loading state
-    listEl.innerHTML = "<li style='opacity:.7'>Loading leaderboard...</li>";
-
-    // Ensure auth available (so highlight logic can use currentUser)
-    await waitForAuth().catch(()=>null);
-
-    let rows = [];
+  // --- Instant Cached/Local Render (when requested) ---
+  if (!fromFirebase) {
     try {
-      rows = await loadLeaderboard();
-    } catch(e){
-      console.warn("Could not load leaderboard", e);
-    }
+      const cached = JSON.parse(localStorage.getItem("cachedLeaderboard") || "[]");
+      const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+      const playerName = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0, 8);
 
-    // Render rows
-    listEl.innerHTML = "";
-    if(!rows || rows.length === 0){
-      listEl.innerHTML = "<li style='opacity:.6'>No global scores yet</li>";
-    } else {
-      rows.forEach((r, i) => {
+      const scores = (cached && cached.length > 0)
+        ? cached
+        : [{ name: playerName, score: localBest }];
+      scores.sort((a, b) => b.score - a.score);
+
+      listEl.innerHTML = "";
+      scores.slice(0, 5).forEach((r, i) => {
         const li = document.createElement("li");
-        const isPlayer = currentUser && (r.uid === currentUser.uid);
-        const highlight = isPlayer;
-        li.className = highlight ? 'rank-highlight' : '';
-        li.innerHTML = `<span>#${i+1}</span><span>${r.name}</span><span class="rank-score">${r.score}s</span>`;
+        li.innerHTML = `<span>#${i + 1}</span><span>${r.name}</span><span class="rank-score">${r.score}s</span>`;
         listEl.appendChild(li);
       });
+      localBestEl.textContent = `${localBest}s`;
+      return;
+    } catch (e) {
+      console.warn("Cached leaderboard render error:", e);
     }
-
-    // Always show local best from localStorage (immediate & reliable)
-    const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
-    localBestEl.textContent = `${localBest}s`;
   }
+
+  // --- Firebase Leaderboard Fetch ---
+  listEl.innerHTML = "<li style='opacity:.7'>Loading leaderboard...</li>";
+
+  await waitForAuth().catch(() => null);
+  let rows = [];
+  try {
+    rows = await loadLeaderboard();
+  } catch (e) {
+    console.warn("Could not load leaderboard", e);
+  }
+
+  listEl.innerHTML = "";
+  if (!rows || rows.length === 0) {
+    listEl.innerHTML = "<li style='opacity:.6'>No global scores yet</li>";
+  } else {
+    rows.forEach((r, i) => {
+      const li = document.createElement("li");
+      const isPlayer = currentUser && r.uid === currentUser.uid;
+      li.className = isPlayer ? "rank-highlight" : "";
+      li.innerHTML = `<span>#${i + 1}</span><span>${r.name}</span><span class="rank-score">${r.score}s</span>`;
+      listEl.appendChild(li);
+    });
+  }
+
+  // Cache new leaderboard results locally for faster next load
+  try {
+    localStorage.setItem("cachedLeaderboard", JSON.stringify(rows));
+  } catch (e) {}
+
+  const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+  localBestEl.textContent = `${localBest}s`;
+}
+
 
   // Called once (idempotent) after we have an auth user
   let _postAuthInitialized = false;
@@ -1482,8 +1515,8 @@
     }
 
     // initial refresh
-    setTimeout(()=>{ updateLeaderboardDisplay().catch(()=>{}); }, 150);
-  }
+    updateLeaderboardDisplay(false); // instant local or cached render
+setTimeout(()=>{ updateLeaderboardDisplay(true).catch(()=>{}); }, 300);
 
   // Wrap/augment game's gameOver to persist to Firebase after local save
   const originalGameOver = window.gameOver || function(){};
