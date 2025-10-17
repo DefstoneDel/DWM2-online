@@ -369,7 +369,14 @@
         // Setting a fixed seed ensures the sequence of random numbers is the same every time.
         const GAME_SEED = 12345; 
         const MAX_GAME_TIME_SECONDS = 600; 
-        const LOCAL_BEST_KEY = 'blockDodgerLocalBestTime'; 
+        const LOCAL_BEST_KEY = 'blockDodgerLocalBestTime';
+// --- Option 1 FIX: Use per-user local best key to avoid caching between users ---
+function getUserLocalBestKey() {
+    const user = (firebase?.auth?.currentUser || null);
+    const uid = user ? user.uid : 'anon';
+    return `${LOCAL_BEST_KEY}_${uid}`;
+}
+ 
         const CUSTOM_MODEL_KEY = 'blockDodgerCarModel';
         const CUSTOM_COLOR_KEY = 'blockDodgerCarColor';
         const PLAYER_NAME_KEY = 'blockDodgerPlayerName'; 
@@ -716,11 +723,13 @@
         }
 
         function loadLocalBest() {
-            const best = localStorage.getItem(LOCAL_BEST_KEY);
+    const key = getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY;
+            const best = localStorage.getItem(getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY);
             return best ? parseInt(best) : 0;
         }
 
         function saveLocalBest(newScore) {
+    const key = getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY;
             let currentBest = loadLocalBest();
             if (newScore > currentBest) {
                 localStorage.setItem(LOCAL_BEST_KEY, newScore);
@@ -1276,7 +1285,7 @@
 */
 (function(){
   const firebaseConfig = {
-    apiKey: "AIzaSyDJ4-PX0BkxLCAAzgt5XheVW6V5EAiCt-Q",
+    apiKey: "AIzaSyDqEKzf3AIAinbnfEU-3CpScNBaB4w5j8o",
     authDomain: "m-8b9af.firebaseapp.com",
     projectId: "m-8b9af",
     storageBucket: "m-8b9af.firebasestorage.app",
@@ -1383,7 +1392,7 @@
       if(!snap.exists){
         await ref.set({
           name: nname,
-          score: Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0,
+          score: Number(localStorage.getItem(getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY)) || 0,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } else {
@@ -1452,7 +1461,7 @@
     }
 
     // Always show local best from localStorage (immediate & reliable)
-    const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+    const localBest = Number(localStorage.getItem(getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY)) || 0;
     localBestEl.textContent = `${localBest}s`;
   }
 
@@ -1491,7 +1500,7 @@
     try { originalGameOver(); } catch(e){ console.warn("originalGameOver error:", e); }
     // retrieve name and local best
     const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
-    const score = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+    const score = Number(localStorage.getItem(getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY)) || 0;
     try {
       await saveScoreToFirebase(name, score);
     } catch(e){ console.warn("Error saving score:", e); }
