@@ -369,7 +369,14 @@
         // Setting a fixed seed ensures the sequence of random numbers is the same every time.
         const GAME_SEED = 12345; 
         const MAX_GAME_TIME_SECONDS = 600; 
-        const LOCAL_BEST_KEY = 'blockDodgerLocalBestTime'; 
+        const LOCAL_BEST_KEY = 'blockDodgerLocalBestTime';
+// --- Option 1 FIX: Use per-user local best key to avoid caching between users ---
+function getUserLocalBestKey() {
+    const user = (firebase?.auth?.currentUser || null);
+    const uid = user ? user.uid : 'anon';
+    return `${LOCAL_BEST_KEY}_${uid}`;
+}
+ 
         const CUSTOM_MODEL_KEY = 'blockDodgerCarModel';
         const CUSTOM_COLOR_KEY = 'blockDodgerCarColor';
         const PLAYER_NAME_KEY = 'blockDodgerPlayerName'; 
@@ -673,13 +680,7 @@
             const armLength = 15;
             if (post.side === 'left') {
                 ctx.fillRect(post.x + post.width, post.y, armLength, 3);
-            
-  } else {
-    console.log("No Firebase user found, signing in anonymously...");
-    firebase.auth().signInAnonymously().catch(err => {
-      console.error("Anonymous sign-in error:", err);
-    });
-
+            } else {
                 ctx.fillRect(post.x - armLength, post.y, armLength, 3);
             }
 
@@ -722,11 +723,13 @@
         }
 
         function loadLocalBest() {
-            const best = localStorage.getItem(LOCAL_BEST_KEY);
+    const key = getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY;
+            const best = localStorage.getItem(getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY);
             return best ? parseInt(best) : 0;
         }
 
         function saveLocalBest(newScore) {
+    const key = getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY;
             let currentBest = loadLocalBest();
             if (newScore > currentBest) {
                 localStorage.setItem(LOCAL_BEST_KEY, newScore);
@@ -1317,15 +1320,6 @@
       const unsubscribe = auth.onAuthStateChanged(user => {
         if(user){
           currentUser = user;
-    // --- FIX: Reset local cache when a new Firebase user is detected ---
-    const storedUID = localStorage.getItem('lastFirebaseUID');
-    if (storedUID !== user.uid) {
-      console.log("New Firebase user detected, resetting local cache");
-      localStorage.removeItem('blockDodgerLocalBestTime');
-      localStorage.removeItem('blockDodgerPlayerName');
-      localStorage.setItem('lastFirebaseUID', user.uid);
-    }
-
           console.log("Firebase auth restored/signed-in:", user.uid);
           postAuthInit();
         }
@@ -1340,13 +1334,7 @@
           } catch(e){
             console.warn("anon sign-in failed:", e);
           }
-        
-  } else {
-    console.log("No Firebase user found, signing in anonymously...");
-    firebase.auth().signInAnonymously().catch(err => {
-      console.error("Anonymous sign-in error:", err);
-    });
-
+        } else {
           // if auth.currentUser already exists (fast restore), set it
           currentUser = auth.currentUser;
           postAuthInit();
@@ -1375,13 +1363,7 @@
           score: newScore,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-      
-  } else {
-    console.log("No Firebase user found, signing in anonymously...");
-    firebase.auth().signInAnonymously().catch(err => {
-      console.error("Anonymous sign-in error:", err);
-    });
-
+      } else {
         const data = snap.data() || {};
         const prev = Number(data.score) || 0;
         // For your game higher is better (saveLocalBest uses >)
@@ -1410,16 +1392,10 @@
       if(!snap.exists){
         await ref.set({
           name: nname,
-          score: Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0,
+          score: Number(localStorage.getItem(getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY)) || 0,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-      
-  } else {
-    console.log("No Firebase user found, signing in anonymously...");
-    firebase.auth().signInAnonymously().catch(err => {
-      console.error("Anonymous sign-in error:", err);
-    });
-
+      } else {
         await ref.update({ name: nname });
       }
     } catch(e){
@@ -1473,13 +1449,7 @@
     listEl.innerHTML = "";
     if(!rows || rows.length === 0){
       listEl.innerHTML = "<li style='opacity:.6'>No global scores yet</li>";
-    
-  } else {
-    console.log("No Firebase user found, signing in anonymously...");
-    firebase.auth().signInAnonymously().catch(err => {
-      console.error("Anonymous sign-in error:", err);
-    });
-
+    } else {
       rows.forEach((r, i) => {
         const li = document.createElement("li");
         const isPlayer = currentUser && (r.uid === currentUser.uid);
@@ -1491,7 +1461,7 @@
     }
 
     // Always show local best from localStorage (immediate & reliable)
-    const localBest = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+    const localBest = Number(localStorage.getItem(getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY)) || 0;
     localBestEl.textContent = `${localBest}s`;
   }
 
@@ -1530,7 +1500,7 @@
     try { originalGameOver(); } catch(e){ console.warn("originalGameOver error:", e); }
     // retrieve name and local best
     const name = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").toUpperCase().slice(0,8);
-    const score = Number(localStorage.getItem(LOCAL_BEST_KEY)) || 0;
+    const score = Number(localStorage.getItem(getUserLocalBestKey ? getUserLocalBestKey() : LOCAL_BEST_KEY)) || 0;
     try {
       await saveScoreToFirebase(name, score);
     } catch(e){ console.warn("Error saving score:", e); }
